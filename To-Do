@@ -13,3 +13,13 @@ Shopping List:
 1. 2x Gloves
 2. AAA Batteries  
 3. Cardboard
+
+Game Flow:
+1. Calibrate start position and arm length
+2. Game start
+3. Render frames
+4. Determine player head movement + hand movements
+5. Determine if punch happened (determined by position of hand + velocity)
+6. Do punch stuff (checking if its too far, checking for blocks, checking for misses)
+7. Send data via radio (health, position)
+8. Repeat
