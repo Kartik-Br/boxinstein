@@ -13,13 +13,13 @@ int main(void)  {
 
     HAL_Init();			//Initalise Board
 	hardware_init();
+    ili9341_draw_filled_rect(0, 0, ILI9341_WIDTH, ILI9341_HEIGHT, ILI9341_BLACK);
         // Main processing loop
    while (1) {
 
-         ili9341_draw_filled_rect(0, 0, 240, 320, ILI9341_BLUE);
-        HAL_Delay(500);
-        ili9341_draw_filled_rect(0, 0, 240, 320, ILI9341_RED);
-        HAL_Delay(500);
+        ili9341_draw_filled_rect(0, 0, 24, 32, ILI9341_BLUE);
+        ili9341_draw_filled_rect(50, 50, 24, 32, ILI9341_RED);
+        ili9341_draw_string(10, 200, "GURTY BAYO!", ILI9341_BLACK, ILI9341_WHITE);
 
 
     }
