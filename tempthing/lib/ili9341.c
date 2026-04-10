@@ -229,7 +229,7 @@ void ili9341_init(void) {
     SPI1->CR1 = SPI_CR1_MSTR       /* Master mode                  */
               | SPI_CR1_SSM        /* Software slave management    */
               | SPI_CR1_SSI        /* Internal slave select high   */
-              | (0x1 << SPI_CR1_BR_Pos);  /* fPCLK / 4 (~22.5 MHz @ 90 MHz APB2) */
+              | (0 << SPI_CR1_BR_Pos);  /* fPCLK / 4 (~22.5 MHz @ 90 MHz APB2) */
     SPI1->CR2 = 0;
     SPI1->CR1 |= SPI_CR1_SPE;      /* Enable SPI                   */
 
@@ -344,11 +344,28 @@ void ili9341_init(void) {
     ili9341_write_data8(0x31); ili9341_write_data8(0x36);
     ili9341_write_data8(0x0F);
 
+    // 1. Enable DMA2 Clock
+    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
+
+    // 2. Configure DMA2 Stream 3 (Serves SPI1_TX)
+    DMA2_Stream3->CR = 0; // Reset
+    while (DMA2_Stream3->CR & DMA_SxCR_EN); // Ensure it's off
+
+    DMA2_Stream3->PAR = (uint32_t)&(SPI1->DR);    // Point to SPI Data Register
+    DMA2_Stream3->CR |= (3 << DMA_SxCR_CHSEL_Pos); // Select Channel 3
+    DMA2_Stream3->CR |= DMA_SxCR_DIR_0;            // Memory-to-Peripheral
+    DMA2_Stream3->CR |= DMA_SxCR_PL_1;             // High Priority
+    DMA2_Stream3->CR |= DMA_SxCR_MSIZE_0;          // 16-bit Memory size
+    DMA2_Stream3->CR |= DMA_SxCR_PSIZE_0;          // 16-bit Peripheral size
+    // Note: We leave MINC (Memory Increment) off for a solid fill
+
     /* Exit sleep, then turn display on */
     ili9341_write_cmd(ILI9341_CMD_SLPOUT);
     HAL_Delay(120);
     ili9341_write_cmd(ILI9341_CMD_DISPON);
 }
+
+
 
 /* ------------------------------------------------------------------ */
 /*  Public: draw filled rectangle                                      */
@@ -497,3 +514,58 @@ void ili9341_draw_string(uint16_t x, uint16_t y, const char *str,
         str++;
     }
 }
+
+void ili9341_fill_dma(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
+    // 1. Set the window as usual
+    ili9341_set_window(x, y, x + w - 1, y + h - 1);
+
+    ILI9341_DC_DATA();
+    ILI9341_CS_LOW();
+
+    // 2. Switch SPI to 16-bit mode (Instant speed boost)
+    SPI1->CR1 &= ~SPI_CR1_SPE;
+    SPI1->CR1 |= SPI_CR1_DFF;  // 16-bit data frame
+    SPI1->CR1 |= SPI_CR1_SPE;
+
+    uint32_t total_pixels = (uint32_t)w * h;
+    static uint16_t dma_color;
+    dma_color = color; // Note: Ensure endianness matches your display setup
+
+    // 3. DMA Transfer Loop (Chunked for > 65k pixels)
+    while (total_pixels > 0) {
+        uint16_t chunk = (total_pixels > 65535) ? 65535 : (uint16_t)total_pixels;
+
+        // Disable DMA Stream to configure
+        DMA2_Stream3->CR &= ~DMA_SxCR_EN;
+        while (DMA2_Stream3->CR & DMA_SxCR_EN);
+
+        // Clear all interrupt flags
+        DMA2->LIFCR = DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3 | DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
+
+        // Configure DMA for SPI1 TX
+        DMA2_Stream3->PAR = (uint32_t)&SPI1->DR;
+        DMA2_Stream3->M0AR = (uint32_t)&dma_color;
+        DMA2_Stream3->NDTR = chunk;
+
+        // CR Settings: Channel 3, Memory-to-Peripheral, 16-bit size, NO Memory Increment
+        DMA2_Stream3->CR = (3 << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_DIR_0 |
+        DMA_SxCR_MSIZE_0 | DMA_SxCR_PSIZE_0 | DMA_SxCR_TCIE;
+
+        SPI1->CR2 |= SPI_CR2_TXDMAEN; // Enable SPI DMA Request
+        DMA2_Stream3->CR |= DMA_SxCR_EN; // Start DMA
+
+        // Wait for Transfer Complete
+        while (!(DMA2->LISR & DMA_LISR_TCIF3));
+        total_pixels -= chunk;
+    }
+
+    // 4. Cleanup
+    while (SPI1->SR & SPI_SR_BSY);
+    ILI9341_CS_HIGH();
+
+    // Revert SPI to 8-bit for commands/text
+    SPI1->CR1 &= ~SPI_CR1_SPE;
+    SPI1->CR1 &= ~SPI_CR1_DFF;
+    SPI1->CR1 |= SPI_CR1_SPE;
+}
+
