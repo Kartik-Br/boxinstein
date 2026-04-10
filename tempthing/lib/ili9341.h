@@ -112,8 +112,6 @@
 #define ILI9341_CMD_GMMANP      0xE1
 
 // Framebuffer dimensions (adjust RES_SCALE as needed)
-#define FB_WIDTH   (ILI9341_WIDTH  / RES_SCALE)
-#define FB_HEIGHT  (ILI9341_HEIGHT / RES_SCALE)
 
 
 /* ------------------------------------------------------------------ */
@@ -166,9 +164,5 @@ void ili9341_draw_string(uint16_t x, uint16_t y, const char *str,
 void ili9341_fill_dma(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
 
 
-// The framebuffer — define in ili9341.c, extern here
-extern uint16_t ili9341_fb[FB_HEIGHT][FB_WIDTH];
 
-// Flush the entire framebuffer to the display
-void ili9341_flush(void);
 #endif /* ILI9341_H */
