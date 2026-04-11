@@ -58,7 +58,7 @@ int main(void) {
         debug_log("Head_Dodge:%f, Head_Lean:%f, RHand_X:%f, RHand_Y:%f, RHand_Z:%f\r\n, LHand_X:%f, LHand_Y:%f, LHand_Z:%f", 
                 head.z, head.x, rightHand.x, rightHand.y, rightHand.z, leftHand.x, leftHand.y, leftHand.z);
 
-        HAL_Delay(16); // ~60 FPS
+        HAL_Delay(30); // ~60 FPS
     }
 }
 

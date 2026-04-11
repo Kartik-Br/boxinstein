@@ -172,9 +172,9 @@ void update_hand_logic(HandState* hand, float* raw) {
     float mz = raw[2] - hand->last_az;
     hand->last_ax = raw[0]; hand->last_ay = raw[1]; hand->last_az = raw[2];
 
-    if(fabs(mx) < 0.06f) mx = 0;
-    if(fabs(my) < 0.06f) my = 0;
-    if(fabs(mz) < 0.06f) mz = 0;
+    if(fabs(mx) < 0.15f) mx = 0;
+    if(fabs(my) < 0.15f) my = 0;
+    if(fabs(mz) < 0.15f) mz = 0;
 
     hand->vel_x = (hand->vel_x + mx * DT) * HAND_DAMPING;
     hand->vel_y = (hand->vel_y + my * DT) * HAND_DAMPING;
