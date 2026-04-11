@@ -41,3 +41,25 @@
 /* ILI9488 Size (physical resolution in default orientation) */
 #define  ILI9488_LCD_PIXEL_WIDTH   320
 #define  ILI9488_LCD_PIXEL_HEIGHT  480
+void     ili9488_Init(void);
+uint16_t ili9488_ReadID(void);
+void     ili9488_DisplayOn(void);
+void     ili9488_DisplayOff(void);
+void     ili9488_SetCursor(uint16_t Xpos, uint16_t Ypos);
+void     ili9488_WritePixel(uint16_t Xpos, uint16_t Ypos, uint16_t RGB_Code);
+uint16_t ili9488_ReadPixel(uint16_t Xpos, uint16_t Ypos);
+void     ili9488_SetDisplayWindow(uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
+void     ili9488_DrawHLine(uint16_t RGBCode, uint16_t Xpos, uint16_t Ypos, uint16_t Length);
+void     ili9488_DrawVLine(uint16_t RGBCode, uint16_t Xpos, uint16_t Ypos, uint16_t Length);
+uint16_t ili9488_GetLcdPixelWidth(void);
+uint16_t ili9488_GetLcdPixelHeight(void);
+void     ili9488_DrawBitmap(uint16_t Xpos, uint16_t Ypos, uint8_t *pbmp);
+void     ili9488_DrawRGBImage(uint16_t Xpos, uint16_t Ypos, uint16_t Xsize, uint16_t Ysize, uint16_t *pdata);
+void     ili9488_ReadRGBImage(uint16_t Xpos, uint16_t Ypos, uint16_t Xsize, uint16_t Ysize, uint16_t *pdata);
+void     ili9488_FillRect(uint16_t Xpos, uint16_t Ypos, uint16_t Xsize, uint16_t Ysize, uint16_t RGBCode);
+void     ili9488_Scroll(int16_t Scroll, uint16_t TopFix, uint16_t BottonFix);
+
+// Touchscreen
+void     ili9488_ts_Init(uint16_t DeviceAddr);
+uint8_t  ili9488_ts_DetectTouch(uint16_t DeviceAddr);
+void     ili9488_ts_GetXY(uint16_t DeviceAddr, uint16_t *X, uint16_t *Y);

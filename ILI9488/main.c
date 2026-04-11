@@ -221,13 +221,6 @@ static void demo_loop(void) {
                     - (uint32_t)(t - PUNCH_HALF) * FIST_RANGE / PUNCH_HALF);
     }
 
-    if (left_jab) {
-        guy_ps.lfist_sz = active_sz;
-        guy_ps.rfist_sz = PS_FIST_MIN;
-    } else {
-        guy_ps.rfist_sz = active_sz;
-        guy_ps.lfist_sz = PS_FIST_MIN;
-    }
 
     /* ---- 3. Move sprite, bounce off walls ------------------------- */
     int16_t new_sx = (int16_t)guy.x + spr_vx;
