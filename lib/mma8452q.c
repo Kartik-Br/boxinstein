@@ -186,10 +186,17 @@ void update_hand_logic(HandState* hand, float* raw) {
 }
 
 void update_head_logic(HeadState* h, float* raw) {
-    float angle_x = atan2f(raw[0], raw[1]) * (180.0f / 3.14159f);
-    float angle_z = atan2f(raw[2], raw[1]) * (180.0f / 3.14159f);
-    h->x = angle_x / HEAD_SENSITIVITY;
-    h->z = angle_z / HEAD_SENSITIVITY;
-    if(h->x > 1.0f) h->x = 1.0f; if(h->x < -1.0f) h->x = -1.0f;
-    if(h->z > 1.0f) h->z = 1.0f; if(h->z < -1.0f) h->z = -1.0f;
+    // 1. Calculate the target angles (assuming Z is gravity/vertical)
+    // Use raw[2] (Z) as the reference if the sensor is lying flat
+    float target_x = atan2f(raw[0], raw[2]) * (180.0f / 3.14159f) / HEAD_SENSITIVITY;
+    float target_z = atan2f(raw[1], raw[2]) * (180.0f / 3.14159f) / HEAD_SENSITIVITY;
+
+    // 2. Simple Low Pass Filter (Smoothing)
+    // NewValue = (OldValue * 0.85) + (Target * 0.15)
+    h->x = (h->x * (1.0f - HEAD_SMOOTHING)) + (target_x * HEAD_SMOOTHING);
+    h->z = (h->z * (1.0f - HEAD_SMOOTHING)) + (target_z * HEAD_SMOOTHING);
+
+    // 3. Clamp
+    if(h->x > 1.0f) h->x = 1.0f;   if(h->x < -1.0f) h->x = -1.0f;
+    if(h->z > 1.0f) h->z = 1.0f;   if(h->z < -1.0f) h->z = -1.0f;
 }

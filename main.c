@@ -31,8 +31,14 @@ int main(void) {
     mma8452q_init(I2C1, MMA_ADDR_VCC);
     debug_log("Right Hand Init OK\r\n");
     
-    mma8452q_init(I2C2, MMA_ADDR_VCC);
+    mma8452q_init(I2C2, MMA_ADDR_GND);
     debug_log("Head Init OK\r\n");
+
+    uint8_t id = mma8452q_reg_read(I2C2, MMA_ADDR_GND, 0x0D);
+    debug_log("Head Sensor ID: 0x%02X (Expected: 0x2A)\r\n", id);
+
+    uint8_t sysmod = mma8452q_reg_read(I2C2, MMA_ADDR_GND, 0x0B);
+    debug_log("Head SYSMOD: 0x%02X (0x01=Standby, 0x02=Active)\r\n", sysmod);
     // Initialize hardware (UART/I2C)
 
     while (1) {

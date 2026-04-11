@@ -13,6 +13,7 @@
 #define HAND_DAMPING 0.85f
 #define HAND_SPRING 0.15f
 #define HEAD_SENSITIVITY 30.0f
+#define HEAD_SMOOTHING 0.15f  // Lower = smoother but laggier (0.05 to 0.2 is ideal)
 
 // --- STRUCT DEFINITIONS (Crucial for fixing your error) ---
 typedef struct {
