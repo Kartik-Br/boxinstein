@@ -34,6 +34,11 @@ int main(void) {
     mma8452q_init(I2C2, MMA_ADDR_VCC);
     debug_log("Head Init OK\r\n");
 
+    uint8_t lh_id = mma8452q_reg_read(I2C1, MMA_ADDR_GND, 0x0D);
+    uint8_t head_id = mma8452q_reg_read(I2C2, MMA_ADDR_VCC, 0x0D);
+    debug_log("LH ID: 0x%02X, Head ID: 0x%02X (both should be 0x2A)\r\n", lh_id, head_id);
+    HAL_Delay(1000);
+
     uint8_t id = mma8452q_reg_read(I2C2, MMA_ADDR_GND, 0x0D);
     debug_log("Head Sensor ID: 0x%02X (Expected: 0x2A)\r\n", id);
 
