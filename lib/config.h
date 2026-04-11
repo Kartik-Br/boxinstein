@@ -20,9 +20,6 @@ typedef struct{
     float angle;
     int curr_speed;
     int max_speed;
-    bool hasPistol;
-    bool hasShotgun;
-    int equipped;
 } Player_info;
 
 
