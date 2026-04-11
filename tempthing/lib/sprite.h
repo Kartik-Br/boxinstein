@@ -6,8 +6,8 @@
 #define S_GUY 0
 #define S_SGUN 1
 
-
-typedef struct {int x;
+typedef struct {
+    int x;
     int y;
     bool isAngled;
     int angle;
@@ -16,6 +16,13 @@ typedef struct {int x;
     bool isExist;
 } Sprite;
 
+/* Hands are separate: size represents Z-axis depth */
+typedef struct {
+    int x;
+    int y;
+    int size;
+    bool isExist;
+} HandSprite;
 
 typedef struct {
     int x_body;
@@ -24,10 +31,7 @@ typedef struct {
     int y_head;
     int x_neck;
     int y_neck;
-    int x_arms;
-    int y_arms;
-
-
+    /* Arms removed as requested */
 } pSprite;
 
 #endif
