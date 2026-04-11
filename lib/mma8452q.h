@@ -10,10 +10,19 @@
 
 // --- Physics Constants ---
 #define DT 0.016f
-#define HAND_DAMPING 0.85f
-#define HAND_SPRING 0.15f
-#define HEAD_SENSITIVITY 30.0f
-#define HEAD_SMOOTHING 0.15f  // Lower = smoother but laggier (0.05 to 0.2 is ideal)
+
+// HAND TUNING (Smooth, fluid gestures)
+#define HAND_DAMPING 0.95f     // 95% velocity retained (smooth glide)
+#define HAND_SPRING  0.03f     // 3% pull to center per frame (loose rubber band)
+#define HAND_SENSITIVITY 150.0f // MASSIVE boost to translate tiny Gs to usable coordinates
+
+// HEAD TUNING (Tight, responsive camera control)
+#define HEAD_DAMPING 0.85f     // 85% velocity retained (stops faster)
+#define HEAD_SPRING  0.08f     // 8% pull to center (snaps back to center quickly)
+#define HEAD_SENSITIVITY 200.0f // Huge boost to catch subtle neck movements
+
+// SENSOR NOISE FILTER
+#define DEADZONE 0.02f         // Lowered from 0.05. Allows slow movements to register
 
 // --- STRUCT DEFINITIONS (Crucial for fixing your error) ---
 typedef struct {

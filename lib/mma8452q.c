@@ -165,6 +165,7 @@ void mma8452q_get_accel(I2C_TypeDef* i2c, uint8_t dev_addr, float *accel_data) {
     accel_data[2] = (float)z / 1024.0f;
 }
 
+/*
 void update_hand_logic(HandState* hand, float* raw) {
     float mx = raw[0] - hand->last_ax;
     float my = raw[1] - hand->last_ay;
@@ -183,7 +184,50 @@ void update_hand_logic(HandState* hand, float* raw) {
     hand->y = (hand->y + hand->vel_y) * (1.0f - HAND_SPRING);
     hand->z = (hand->z + hand->vel_z) * (1.0f - HAND_SPRING);
 }
+*/
+void update_hand_logic(HandState* hand, float* raw) {
+    // 1. High-Pass Filter (Isolate movement, ignore static gravity)
+    float ax = raw[0] - hand->last_ax;
+    float ay = raw[1] - hand->last_ay;
+    float az = raw[2] - hand->last_az;
 
+    hand->last_ax = raw[0];
+    hand->last_ay = raw[1];
+    hand->last_az = raw[2];
+
+    // 2. Deadzone (Ignore tiny vibrations)
+    if(fabs(ax) < DEADZONE) ax = 0;
+    if(fabs(ay) < DEADZONE) ay = 0;
+    if(fabs(az) < DEADZONE) az = 0;
+
+    // 3. Acceleration -> Velocity (With boosted sensitivity)
+    hand->vel_x += (ax * HAND_SENSITIVITY) * DT;
+    hand->vel_y += (ay * HAND_SENSITIVITY) * DT;
+    hand->vel_z += (az * HAND_SENSITIVITY) * DT;
+
+    // 4. Apply Air Resistance (Damping)
+    hand->vel_x *= HAND_DAMPING;
+    hand->vel_y *= HAND_DAMPING;
+    hand->vel_z *= HAND_DAMPING;
+
+    // 5. Velocity -> Position
+    hand->x += hand->vel_x * DT;
+    hand->y += hand->vel_y * DT;
+    hand->z += hand->vel_z * DT;
+
+    // 6. Return-to-Center Spring
+    hand->x *= (1.0f - HAND_SPRING);
+    hand->y *= (1.0f - HAND_SPRING);
+    hand->z *= (1.0f - HAND_SPRING);
+
+    // 7. Output Limiter (Definitive Bounds: -1.0 to 1.0)
+    // This ensures your downstream code never breaks from crazy inputs
+    if(hand->x > 1.0f) hand->x = 1.0f; if(hand->x < -1.0f) hand->x = -1.0f;
+    if(hand->y > 1.0f) hand->y = 1.0f; if(hand->y < -1.0f) hand->y = -1.0f;
+    if(hand->z > 1.0f) hand->z = 1.0f; if(hand->z < -1.0f) hand->z = -1.0f;
+}
+
+/*
 void update_head_logic(HeadState* h, float* raw) {
     // 1. Calculate change in raw sensor data (Acceleration)
     float mx = raw[0] - h->last_ax;
@@ -209,4 +253,37 @@ void update_head_logic(HeadState* h, float* raw) {
     // 5. Hard Clamp (Optional, keeps the head from spinning 360)
     if(h->x > 1.0f)  h->x = 1.0f;  if(h->x < -1.0f) h->x = -1.0f;
     if(h->z > 1.0f)  h->z = 1.0f;  if(h->z < -1.0f) h->z = -1.0f;
+}
+*/
+void update_head_logic(HeadState* h, float* raw) {
+    // 1. High-Pass Filter (Lean is X, Dodge is Z)
+    float lean_accel = raw[0] - h->last_ax;
+    float dodge_accel = raw[1] - h->last_az; 
+    
+    h->last_ax = raw[0];
+    h->last_az = raw[1]; // Note: using raw[1] (Y-axis of sensor) for Z-depth dodge
+
+    // 2. Deadzone
+    if(fabs(lean_accel) < DEADZONE) lean_accel = 0;
+    if(fabs(dodge_accel) < DEADZONE) dodge_accel = 0;
+
+    // 3. Acceleration -> Velocity
+    h->vel_x += (lean_accel * HEAD_SENSITIVITY) * DT;
+    h->vel_z += (dodge_accel * HEAD_SENSITIVITY) * DT;
+
+    // 4. Apply Tighter Head Damping
+    h->vel_x *= HEAD_DAMPING;
+    h->vel_z *= HEAD_DAMPING;
+
+    // 5. Velocity -> Position
+    h->x += h->vel_x * DT;
+    h->z += h->vel_z * DT;
+
+    // 6. Tighter Return-to-Center Spring
+    h->x *= (1.0f - HEAD_SPRING);
+    h->z *= (1.0f - HEAD_SPRING);
+
+    // 7. Output Limiter (-1.0 to 1.0)
+    if(h->x > 1.0f) h->x = 1.0f; if(h->x < -1.0f) h->x = -1.0f;
+    if(h->z > 1.0f) h->z = 1.0f; if(h->z < -1.0f) h->z = -1.0f;
 }
