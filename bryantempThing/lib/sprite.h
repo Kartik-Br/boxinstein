@@ -6,6 +6,12 @@
 #define S_GUY 0
 #define S_SGUN 1
 
+typedef struct {
+    int x;
+    int y;
+    int size;
+    bool isExist;
+} HandSprite;
 
 typedef struct {int x;
     int y;

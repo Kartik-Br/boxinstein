@@ -105,19 +105,65 @@ static uint8_t punch_frame = 0;
 /* ------------------------------------------------------------------ */
 static void demo_init(void);
 static void demo_loop(void);
+void SystemClock_Config(void);
 
-/* ------------------------------------------------------------------ */
-/*  Entry point                                                        */
-/* ------------------------------------------------------------------ */
 int main(void) {
     HAL_Init();
+    SystemClock_Config();
     demo_init();
     while (1) {
         demo_loop();
     }
 }
 
+/**
+  * @brief System Clock Configuration for 180 MHz
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
+  /* Configure the main internal regulator output voltage */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+  /* Enable HSE Oscillator and activate PLL with HSE as source */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS; // Nucleo uses bypass from ST-Link
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 360;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    /* Initialization Error */
+    while(1);
+  }
+
+  /* Activate the Over-Drive mode */
+  if (HAL_PWREx_EnableOverDrive() != HAL_OK)
+  {
+    /* Initialization Error */
+    while(1);
+  }
+
+  /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2 clocks dividers */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;  // 45 MHz max
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;  // 90 MHz max
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  {
+    /* Initialization Error */
+    while(1);
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  demo_init                                                          */
@@ -136,7 +182,7 @@ static void demo_init(void) {
 
     /* Zero-init: render_update_psprite detects zero and sets default sizes */
     guy_ps = (pSprite){0};
-    render_update_psprite(&guy_ps, &guy, 0);
+    render_update_psprite(&guy_ps, &guy, 0, 0);
     render_draw_psprite(&guy_ps, COL_SPRITE);
 
     rect_x = (int16_t)guy.x - RECT_W - 4;
@@ -196,7 +242,7 @@ static void demo_loop(void) {
     guy.y = new_sy;
 
     /* ---- 4. Recompute all limb positions (fist pos from stored sz) */
-    render_update_psprite(&guy_ps, &guy, 0);
+    render_update_psprite(&guy_ps, &guy, 0, 0);
 
     /* ---- 5. Draw updated sprite ----------------------------------- */
     render_draw_psprite(&guy_ps, COL_SPRITE);
