@@ -106,7 +106,6 @@ void mma8452q_init(I2C_TypeDef* i2c, uint8_t dev_addr) {
     // CTRL_REG1 (0x2A) = 0x01 (Active Mode, 800Hz ODR)
     mma8452q_reg_write(i2c, dev_addr, 0x2A, 0x01);
 }
-
 /**
  * @brief Reads all 6 axes and converts to float G-force
  */
@@ -186,17 +185,28 @@ void update_hand_logic(HandState* hand, float* raw) {
 }
 
 void update_head_logic(HeadState* h, float* raw) {
-    // 1. Calculate the target angles (assuming Z is gravity/vertical)
-    // Use raw[2] (Z) as the reference if the sensor is lying flat
-    float target_x = atan2f(raw[0], raw[2]) * (180.0f / 3.14159f) / HEAD_SENSITIVITY;
-    float target_z = atan2f(raw[1], raw[2]) * (180.0f / 3.14159f) / HEAD_SENSITIVITY;
+    // 1. Calculate change in raw sensor data (Acceleration)
+    float mx = raw[0] - h->last_ax;
+    float mz = raw[1] - h->last_az;
+    
+    // Save current raw for next frame
+    h->last_ax = raw[0];
+    h->last_az = raw[1];
 
-    // 2. Simple Low Pass Filter (Smoothing)
-    // NewValue = (OldValue * 0.85) + (Target * 0.15)
-    h->x = (h->x * (1.0f - HEAD_SMOOTHING)) + (target_x * HEAD_SMOOTHING);
-    h->z = (h->z * (1.0f - HEAD_SMOOTHING)) + (target_z * HEAD_SMOOTHING);
+    // 2. Noise Filter (Deadzone)
+    if(fabs(mx) < 0.06f) mx = 0;
+    if(fabs(mz) < 0.06f) mz = 0;
 
-    // 3. Clamp
-    if(h->x > 1.0f) h->x = 1.0f;   if(h->x < -1.0f) h->x = -1.0f;
-    if(h->z > 1.0f) h->z = 1.0f;   if(h->z < -1.0f) h->z = -1.0f;
+    // 3. Update Velocity (Apply Damping)
+    // HEAD_SENSITIVITY helps scale the raw input to a usable speed
+    h->vel_x = (h->vel_x + (mx * HEAD_SENSITIVITY) * DT) * HAND_DAMPING;
+    h->vel_z = (h->vel_z + (mz * HEAD_SENSITIVITY) * DT) * HAND_DAMPING;
+
+    // 4. Update Position (Apply Spring/Smoothing)
+    h->x = (h->x + h->vel_x) * (1.0f - HAND_SPRING);
+    h->z = (h->z + h->vel_z) * (1.0f - HAND_SPRING);
+
+    // 5. Hard Clamp (Optional, keeps the head from spinning 360)
+    if(h->x > 1.0f)  h->x = 1.0f;  if(h->x < -1.0f) h->x = -1.0f;
+    if(h->z > 1.0f)  h->z = 1.0f;  if(h->z < -1.0f) h->z = -1.0f;
 }

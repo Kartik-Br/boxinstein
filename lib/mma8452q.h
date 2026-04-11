@@ -23,7 +23,9 @@ typedef struct {
 } HandState;
 
 typedef struct {
-    float x, z;
+    float x, z;             // Current rotation/position
+    float vel_x, vel_z;     // Velocity
+    float last_ax, last_az; // For calculating delta (mx, mz)
 } HeadState;
 
 // --- Function Prototypes ---

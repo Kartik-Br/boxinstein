@@ -31,7 +31,7 @@ int main(void) {
     mma8452q_init(I2C1, MMA_ADDR_VCC);
     debug_log("Right Hand Init OK\r\n");
     
-    mma8452q_init(I2C2, MMA_ADDR_GND);
+    mma8452q_init(I2C2, MMA_ADDR_VCC);
     debug_log("Head Init OK\r\n");
 
     uint8_t id = mma8452q_reg_read(I2C2, MMA_ADDR_GND, 0x0D);
@@ -121,4 +121,11 @@ void hardware_init(void) {
     MODIFY_REG(I2C2->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(freqrange, 100000));
     MODIFY_REG(I2C2->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk1, 100000, I2C_DUTYCYCLE_2));
     SET_BIT(I2C2->CR1, I2C_CR1_PE);   // Enable
+
+    // Check if I2C2 is actually enabled and not reporting a bus error
+    if (I2C2->SR2 & I2C_SR2_BUSY) {
+        BRD_debuguart_puts("I2C2 Error: Bus is Busy (Check pull-ups!)\r\n");
+    } else {
+        BRD_debuguart_puts("I2C2 Initialized Successfully\r\n");
+    }
 }
