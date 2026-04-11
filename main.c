@@ -1,9 +1,21 @@
 //#include "accel.c"
+#include "board.h"
+#include "processor_hal.h"
+#include "debug_log.h"
+#include "nrf24l01plus.h"
 #include "ili9341.h"
 #include "render.h"
 #include "sprite.h"
 #include "3dEngine.h"
 #include "collisions.h"
+#include <string.h>
+
+// ========================================
+// COMMENT OUT ONE OF THESE TO SWITCH ROLES
+// ========================================
+//#define BOARD_MASTER
+#define BOARD_SLAVE
+// ========================================
 
 #define FRAME_DELAY_MS 67
 
@@ -48,10 +60,13 @@ uint8_t map[20][20] = {
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
+void hardware_init(void);
+
 int main(void) {
     HAL_Init();
+    hardware_init();
     demo_init();
-    Player_info player = {.x = 5*64, .y = 5*64, .angle = -90, .curr_speed = 0, .max_speed = 5};
+    Player_info player = {.x = 2*64, .y = 4*64, .angle = -90};
     int numSprites = 4;
     HandSprite handSprites[4];
     HandSprite* sprites = handSprites;
@@ -71,10 +86,10 @@ int main(void) {
 
     //Sprite* players;
     //Sprite* allSprites;
-    //sprites[0].x = player.x - 70;
-    sprites[0].x = opSprite.xPos - 25;
-    //sprites[0].y = player.y - 128;
-    sprites[0].y = opSprite.yPos - 5;
+    sprites[0].x = player.x - 70;
+    //sprites[0].x = opSprite.xPos - 25;
+    sprites[0].y = player.y - 128;
+    //sprites[0].y = opSprite.yPos - 5;
     sprites[0].z = 125;
     sprites[0].isExist = true;
     sprites[0].size = 50;
@@ -83,7 +98,7 @@ int main(void) {
     sprites[1].x = player.x - 300;
     sprites[1].y = player.y - 300;
     sprites[1].z = 32;
-    sprites[1].isExist = false;
+    sprites[1].isExist = true;
     sprites[1].size = 50;
     sprites[1].blockCounter = 0;
 
@@ -93,15 +108,41 @@ int main(void) {
     sprites[2].y = opSprite.yPos - 128;
     //sprites[2].y = opSprite.yPos - 1;
     sprites[2].z = -50;
-    sprites[2].isExist = false;
+    sprites[2].isExist = true;
     sprites[2].size = 50;
 
     sprites[3].x = player.x + 600;
     sprites[3].y = player.y + 500;
     sprites[3].z = -80;
-    sprites[3].isExist = false;
+    sprites[3].isExist = true;
     sprites[3].size = 50;
 
+    #ifdef BOARD_MASTER
+    //pSprite my_player = {0};
+    //pSprite enemy_player = {0};
+    //my_player.x_body = 10;
+    //my_player.y_body = 20;
+    uint8_t tx_buffer[32] = {0};
+    uint8_t rx_buffer[32] = {0};
+
+    debug_log("Board 1 (Master) Booted...\r\n");
+
+    #elif defined(BOARD_SLAVE)
+    //pSprite enemy_player = {0};
+    //pSprite my_player = {0};
+    //my_player.x_body = 500;
+    //my_player.y_body = 600;
+    uint8_t rx_buffer[32] = {0};
+    uint8_t ack_buffer[32] = {0};
+
+    debug_log("Board 2 (Slave) Booted...\r\n");
+
+    nrf24l01plus_ce();
+    //memcpy(ack_buffer, &player, sizeof(pSprite));
+    //nrf24l01plus_write_ack_payload(0, ack_buffer, 32);
+    #else
+    #error "You must define either BOARD_MASTER or BOARD_SLAVE at the top of main.c"
+    #endif
 
 
     int rows = 320;
@@ -110,27 +151,27 @@ int main(void) {
     while(1) {
         while (HAL_GetTick() - timePassed < FRAME_DELAY_MS);
         if (check_collide_block(&(sprites[0]), sprites)) {
-            break;
+            //break;
         }
         if (check_collide_block(&(sprites[1]), sprites)) {
-            break;
+            //break;
         }
         if (check_collide_head(&(sprites[0]), &opSprite)) {
-            break;
+            //break;
         }
         if (check_collide_head(&(sprites[1]), &opSprite)) {
-            break;
+            //break;
         }
         if (check_collide_body(&(sprites[0]), &opSprite)) {
-            break;
+            //break;
         }
         if (check_collide_body(&(sprites[1]), &opSprite)) {
-            break;
+            //break;
         }
         timePassed = HAL_GetTick();
         float FOV = 70.0f; // degrees
         float FOV_RAD = FOV * (M_PI / 180.0f);
-        //player.angle += 5;
+        player.angle += 5;
         //opSprite.xPos += 5;
         //sprites[0].y -= 5;
 
@@ -141,8 +182,128 @@ int main(void) {
         draw_all_stuff(map, &player, cols, rows, sprites, numSprites, &opSprite);
         //HAL_Delay(FRAME_DELAY_MS);
         //break;
+        #ifdef BOARD_MASTER
+        //my_player.x_body++;
+        int8_t buf8;
+        int16_t buf16;
+        buf16 = player.x;
+        memcpy(tx_buffer, &buf16, 2);
+        buf16 = player.y;
+        memcpy(tx_buffer + 2, &buf16, 2);
+        buf16 = sprites[0].x;
+        memcpy(tx_buffer + 4, &buf16, 2);
+        buf16 = sprites[0].y;
+        memcpy(tx_buffer + 6, &buf16, 2);
+        buf16 = sprites[0].z;
+        memcpy(tx_buffer + 8, &buf16, 2);
+        buf8 = sprites[0].isHit;
+        memcpy(tx_buffer + 10, &buf8, 1);
+        buf16 = sprites[1].x;
+        memcpy(tx_buffer + 11, &buf16, 2);
+        buf16 = sprites[1].y;
+        memcpy(tx_buffer + 13, &buf16, 2);
+        buf16 = sprites[1].z;
+        memcpy(tx_buffer + 15, &buf16, 2);
+        buf8 = sprites[1].isHit;
+        memcpy(tx_buffer + 17, &buf8, 1);
+        nrf24l01plus_send(tx_buffer);
+
+        if (nrf24l01plus_recv(rx_buffer) == 1) {
+            memcpy(&buf16, rx_buffer, 2);
+            opSprite.xPos = buf16;
+            memcpy(&buf16, rx_buffer + 2, 2);
+            opSprite.yPos = buf16;
+            memcpy(&buf16, rx_buffer + 4, 2);
+            sprites[2].x = buf16;
+            memcpy(&buf16, rx_buffer + 6, 2);
+            sprites[2].y = buf16;
+            memcpy(&buf16, rx_buffer + 8, 2);
+            sprites[2].z = buf16;
+            memcpy(&buf16, rx_buffer + 10, 1);
+            sprites[2].isHit = buf8;
+            memcpy(&buf16, rx_buffer + 11, 2);
+            sprites[3].x = buf16;
+            memcpy(&buf16, rx_buffer + 13, 2);
+            sprites[3].y = buf16;
+            memcpy(&buf16, rx_buffer + 15, 2);
+            sprites[3].z = buf16;
+            memcpy(&buf16, rx_buffer + 17, 1);
+            sprites[3].isHit = buf8;
+            debug_log("TX SUCCESS! Enemy is at X:%d, Y:%d\r\n", opSprite.xPos, opSprite.yPos);
+            BRD_LEDGreenToggle();
+        } else {
+            debug_log("TX FAILED\r\n");
+        }
+
+        #elif defined(BOARD_SLAVE)
+        int8_t buf8;
+        int16_t buf16;
+        if (nrf24l01plus_recv(rx_buffer) == 1) {
+            //memcpy(&opSprite, rx_buffer, 4);
+            //memcpy(&(sprites[2]), rx_buffer, 7);
+            //memcpy(&(sprites[3]), rx_buffer, 7);
+            memcpy(&buf16, rx_buffer, 2);
+            opSprite.xPos = buf16;
+            memcpy(&buf16, rx_buffer + 2, 2);
+            opSprite.yPos = buf16;
+            memcpy(&buf16, rx_buffer + 4, 2);
+            sprites[2].x = buf16;
+            memcpy(&buf16, rx_buffer + 6, 2);
+            sprites[2].y = buf16;
+            memcpy(&buf16, rx_buffer + 8, 2);
+            sprites[2].z = buf16;
+            memcpy(&buf16, rx_buffer + 10, 1);
+            sprites[2].isHit = buf8;
+            memcpy(&buf16, rx_buffer + 11, 2);
+            sprites[3].x = buf16;
+            memcpy(&buf16, rx_buffer + 13, 2);
+            sprites[3].y = buf16;
+            memcpy(&buf16, rx_buffer + 15, 2);
+            sprites[3].z = buf16;
+            memcpy(&buf16, rx_buffer + 17, 1);
+            sprites[3].isHit = buf8;
+
+            debug_log("RX SUCCESS! Enemy is at X:%d, Y:%d\r\n", opSprite.xPos, opSprite.yPos);
+            BRD_LEDGreenToggle();
+            //my_player.x_body--;
+            //memcpy(ack_buffer, &player, 4);
+            //memcpy(ack_buffer + 4, &(sprites[0]), 7);
+            //memcpy(ack_buffer + 11, &(sprites[1]), 7);
+            buf16 = player.x;
+            memcpy(ack_buffer, &buf16, 2);
+            buf16 = player.y;
+            memcpy(ack_buffer + 2, &buf16, 2);
+            buf16 = sprites[0].x;
+            memcpy(ack_buffer + 4, &buf16, 2);
+            buf16 = sprites[0].y;
+            memcpy(ack_buffer + 6, &buf16, 2);
+            buf16 = sprites[0].z;
+            memcpy(ack_buffer + 8, &buf16, 2);
+            buf8 = sprites[0].isHit;
+            memcpy(ack_buffer + 10, &buf8, 1);
+            buf16 = sprites[1].x;
+            memcpy(ack_buffer + 11, &buf16, 2);
+            buf16 = sprites[1].y;
+            memcpy(ack_buffer + 13, &buf16, 2);
+            buf16 = sprites[1].z;
+            memcpy(ack_buffer + 15, &buf16, 2);
+            buf8 = sprites[1].isHit;
+            memcpy(ack_buffer + 17, &buf8, 1);
+
+            nrf24l01plus_write_ack_payload(0, ack_buffer, 32);
+            nrf24l01plus_ce();
+        }
+        #endif
     }
     return 0;
+}
+
+void hardware_init(void) {
+    BRD_debuguart_init();
+    BRD_LEDInit();
+    BRD_LEDGreenOff();
+    nrf24l01plus_init();
+    HAL_Delay(2);
 }
 
 static void demo_init(void) {

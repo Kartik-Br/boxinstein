@@ -23,11 +23,14 @@ CFLAGS += -I$(MYLIB_PATH)
 
 ifdef USE_ILI9488
     CFLAGS  += -DUSE_ILI9488 -I$(MYLIB_PATH2)
-    LIBSRCS += $(MYLIB_PATH)/accel.c $(MYLIB_PATH)/3dEngine.c $(MYLIB_PATH)/render.c
+	LIBSRCS += $(MYLIB_PATH)/accel.c $(MYLIB_PATH)/render.c \
+			   $(MYLIB_PATH)/3dEngine.c $(MYLIB_PATH)/collisions.c \
+			   $(MYLIB_PATH)/nrf24l01plus.c
     LIBSRCS += $(MYLIB_PATH2)/stm32_adafruit_lcd.c $(MYLIB_PATH2)/ili9488.c \
                $(MYLIB_PATH2)/lcd_io_spi.c $(MYLIB_PATH2)/font24.c \
-               $(MYLIB_PATH2)/font8.c
+               $(MYLIB_PATH2)/font8.c 
     LIBSRCS += $(MYLIB_PATH)/display_shim.c
+
 
     # Compile the 9488 render.c separately to avoid the name clash with lib/render.c
     $(shell mkdir -p obj)
@@ -38,5 +41,5 @@ ifdef USE_ILI9488
 else
     LIBSRCS += $(MYLIB_PATH)/accel.c $(MYLIB_PATH)/ili9341.c \
                $(MYLIB_PATH)/render.c $(MYLIB_PATH)/3dEngine.c \
-			   $(MYLIB_PATH)/collisions.c
+			   $(MYLIB_PATH)/collisions.c $(MYLIB_PATH)/nrf24l01plus.c
 endif

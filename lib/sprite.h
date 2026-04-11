@@ -2,6 +2,7 @@
 #define SPRITE_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define S_GUY 0
 #define S_SGUN 1
@@ -21,6 +22,7 @@ typedef struct {
     int16_t x;
     int16_t y;
     int16_t z;
+    bool isHit;
     int16_t xScr;
     int16_t yScr;
     int16_t size;

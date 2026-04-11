@@ -15,11 +15,9 @@ Also useful to define any macros that you need here
 #define PI 3.14
 
 typedef struct{
-    int x;
-    int y; 
+    int16_t x;
+    int16_t y; 
     float angle;
-    int curr_speed;
-    int max_speed;
 } Player_info;
 
 

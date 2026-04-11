@@ -240,7 +240,7 @@ void ili9488_Init(void)
   LCD_IO_WriteCmd8MultipleData8(ILI9488_ADJCTR3, (uint8_t *)"\xA9\x51\x2C\x82", 4); // Adjust Control (D7 stream, loose)
   LCD_Delay(5);
   LCD_IO_WriteCmd8(ILI9488_SLPOUT);      // Exit Sleep
-  LCD_Delay(120);
+  //LCD_Delay(120);
   LCD_IO_WriteCmd8(ILI9488_DISPON);      // Display on
   LCD_Delay(5);
   LCD_IO_WriteCmd8(ILI9488_MADCTL); LCD_IO_WriteData8(ILI9488_MAD_DATA_RIGHT_THEN_DOWN);
