@@ -31,9 +31,9 @@ static inline uint16_t abs16(int16_t v) {
  * Clips to display bounds.
  */
 static void hline(int16_t x, int16_t y, int16_t len, uint16_t color) {
-    if (y < 0 || y >= (int16_t)ili9488_GetLcdPixelHeight() || len <= 0) return;
+    if (y < 0 || y >= (int16_t)BSP_LCD_GetYSize() || len <= 0) return;
     if (x < 0) { len += x; x = 0; }
-    if (x + len > (int16_t)ili9488_GetLcdPixelWidth()) len = (int16_t)ili9488_GetLcdPixelWidth() - x;
+    if (x + len > (int16_t)BSP_LCD_GetXSize()) len = (int16_t)BSP_LCD_GetXSize() - x;
     if (len <= 0) return;
     
     BSP_LCD_SetTextColor(color);
@@ -45,9 +45,9 @@ static void hline(int16_t x, int16_t y, int16_t len, uint16_t color) {
  * Clips to display bounds.
  */
 static void vline(int16_t x, int16_t y, int16_t len, uint16_t color) {
-    if (x < 0 || x >= (int16_t)ili9488_GetLcdPixelWidth() || len <= 0) return;
+    if (x < 0 || x >= (int16_t)BSP_LCD_GetXSize() || len <= 0) return;
     if (y < 0) { len += y; y = 0; }
-    if (y + len > (int16_t)ili9488_GetLcdPixelHeight()) len = (int16_t)ili9488_GetLcdPixelHeight() - y;
+    if (y + len > (int16_t)BSP_LCD_GetYSize()) len = (int16_t)BSP_LCD_GetYSize() - y;
     if (len <= 0) return;
     
     BSP_LCD_SetTextColor(color);
@@ -62,9 +62,9 @@ static void erase_rect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t bg) 
     if (w <= 0 || h <= 0) return;
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
-    if (x >= (int16_t)ili9488_GetLcdPixelWidth()  || y >= (int16_t)ili9488_GetLcdPixelHeight()) return;
-    if (x + w > (int16_t)ili9488_GetLcdPixelWidth())  w = (int16_t)ili9488_GetLcdPixelWidth()  - x;
-    if (y + h > (int16_t)ili9488_GetLcdPixelHeight()) h = (int16_t)ili9488_GetLcdPixelHeight() - y;
+    if (x >= (int16_t)BSP_LCD_GetXSize()  || y >= (int16_t)BSP_LCD_GetYSize()) return;
+    if (x + w > (int16_t)BSP_LCD_GetXSize())  w = (int16_t)BSP_LCD_GetXSize()  - x;
+    if (y + h > (int16_t)BSP_LCD_GetYSize()) h = (int16_t)BSP_LCD_GetYSize() - y;
     if (w <= 0 || h <= 0) return;
     
     BSP_LCD_SetTextColor(bg);
@@ -73,8 +73,8 @@ static void erase_rect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t bg) 
 
 /* Replaces the old plot_pixel */
 static void plot_pixel(int16_t x, int16_t y, uint16_t color) {
-    if (x < 0 || x >= (int16_t)ili9488_GetLcdPixelWidth())  return;
-    if (y < 0 || y >= (int16_t)ili9488_GetLcdPixelHeight()) return;
+    if (x < 0 || x >= (int16_t)BSP_LCD_GetXSize())  return;
+    if (y < 0 || y >= (int16_t)BSP_LCD_GetYSize()) return;
     
     BSP_LCD_DrawPixel((uint16_t)x, (uint16_t)y, color);
 }

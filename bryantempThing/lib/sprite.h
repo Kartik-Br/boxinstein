@@ -2,18 +2,12 @@
 #define SPRITE_H
 
 #include <stdbool.h>
-#include <stdint.h> 
+
 #define S_GUY 0
 #define S_SGUN 1
 
 typedef struct {
     int x;
-    int y;
-    int size;
-    bool isExist;
-} HandSprite;
-
-typedef struct {int x;
     int y;
     bool isAngled;
     int angle;
@@ -22,6 +16,13 @@ typedef struct {int x;
     bool isExist;
 } Sprite;
 
+/* Hands are separate: size represents Z-axis depth */
+typedef struct {
+    int x;
+    int y;
+    int size;
+    bool isExist;
+} HandSprite;
 
 typedef struct {
     int x_body;
@@ -30,16 +31,7 @@ typedef struct {
     int y_head;
     int x_neck;
     int y_neck;
-    int x_larm;
-    int y_larm;
-    int x_rarm;
-    int y_rarm;
-    int x_lfist;
-    int y_lfist;
-    int x_rfist;
-    int y_rfist;
-    uint16_t lfist_sz;
-    uint16_t rfist_sz;
+    /* Arms removed as requested */
 } pSprite;
 
 #endif
