@@ -61,7 +61,7 @@ int main(void) {
         debug_log("Head_Spd_X:%f, Head_Pos_X:%f, RHand_Spd_X:%f, RHand_Pos_X:%f, LHand_Spd_X:%f, LHand_Pos_X:%f\r\n", 
                 head.vel_x, head.x, rightHand.vel_x, rightHand.x, leftHand.vel_x, leftHand.x);
                 
-        HAL_Delay(30); // ~60 FPS
+        HAL_Delay(33); // ~30 FPS
     }
 }
 

@@ -9,7 +9,7 @@
 #define MMA_ADDR_VCC 0x1D
 
 // --- Physics Constants ---
-#define DT 0.016f
+#define DT 0.033f
 
 // HAND TUNING (Smooth, fluid gestures)
 #define HAND_DAMPING 0.95f     // 95% velocity retained (smooth glide)
