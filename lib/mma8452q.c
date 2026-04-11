@@ -166,7 +166,7 @@ void mma8452q_get_accel(I2C_TypeDef* i2c, uint8_t dev_addr, float *accel_data) {
     accel_data[2] = (float)z / 1024.0f;
 }
 
-void update_hand_logic(HandState* hand, float* raw) {
+/*void update_hand_logic(HandState* hand, float* raw) {
     float mx = raw[0] - hand->last_ax;
     float my = raw[1] - hand->last_ay;
     float mz = raw[2] - hand->last_az;
@@ -199,4 +199,58 @@ void update_head_logic(HeadState* h, float* raw) {
     // 3. Clamp
     if(h->x > 1.0f) h->x = 1.0f;   if(h->x < -1.0f) h->x = -1.0f;
     if(h->z > 1.0f) h->z = 1.0f;   if(h->z < -1.0f) h->z = -1.0f;
+}*/
+
+
+void update_hand_logic(HandState* hand, float* raw) {
+    // 1. Isolate linear acceleration (Remove gravity using a Low-Pass Filter)
+    // 10% new reading, 90% old reading builds a stable gravity vector
+    hand->grav_x = (hand->grav_x * 0.9f) + (raw[0] * 0.1f);
+    hand->grav_y = (hand->grav_y * 0.9f) + (raw[1] * 0.1f);
+    hand->grav_z = (hand->grav_z * 0.9f) + (raw[2] * 0.1f);
+
+    float lin_ax = raw[0] - hand->grav_x;
+    float lin_ay = raw[1] - hand->grav_y;
+    float lin_az = raw[2] - hand->grav_z;
+
+    // 2. Deadzone to prevent integrating tiny sensor vibrations/noise
+    if(fabs(lin_ax) < 0.05f) lin_ax = 0;
+    if(fabs(lin_ay) < 0.05f) lin_ay = 0;
+    if(fabs(lin_az) < 0.05f) lin_az = 0;
+
+    // 3. Integrate Acceleration into Speed & Amplify
+    hand->vel_x = (hand->vel_x + (lin_ax * DT * SPEED_AMPLIFIER)) * HAND_DAMPING;
+    hand->vel_y = (hand->vel_y + (lin_ay * DT * SPEED_AMPLIFIER)) * HAND_DAMPING;
+    hand->vel_z = (hand->vel_z + (lin_az * DT * SPEED_AMPLIFIER)) * HAND_DAMPING;
+
+    // 4. Integrate Speed into Position & Amplify
+    hand->x = (hand->x + (hand->vel_x * DT * POS_AMPLIFIER)) * HAND_SPRING;
+    hand->y = (hand->y + (hand->vel_y * DT * POS_AMPLIFIER)) * HAND_SPRING;
+    hand->z = (hand->z + (hand->vel_z * DT * POS_AMPLIFIER)) * HAND_SPRING;
+}
+
+void update_head_logic(HeadState* head, float* raw) {
+    // 1. Isolate linear acceleration (Remove gravity)
+    head->grav_x = (head->grav_x * 0.9f) + (raw[0] * 0.1f);
+    head->grav_y = (head->grav_y * 0.9f) + (raw[1] * 0.1f);
+    head->grav_z = (head->grav_z * 0.9f) + (raw[2] * 0.1f);
+
+    float lin_ax = raw[0] - head->grav_x;
+    float lin_ay = raw[1] - head->grav_y;
+    float lin_az = raw[2] - head->grav_z;
+
+    // 2. Deadzone
+    if(fabs(lin_ax) < 0.05f) lin_ax = 0;
+    if(fabs(lin_ay) < 0.05f) lin_ay = 0;
+    if(fabs(lin_az) < 0.05f) lin_az = 0;
+
+    // 3. Integrate Acceleration into Speed & Amplify
+    head->vel_x = (head->vel_x + (lin_ax * DT * SPEED_AMPLIFIER)) * HEAD_DAMPING;
+    head->vel_y = (head->vel_y + (lin_ay * DT * SPEED_AMPLIFIER)) * HEAD_DAMPING;
+    head->vel_z = (head->vel_z + (lin_az * DT * SPEED_AMPLIFIER)) * HEAD_DAMPING;
+
+    // 4. Integrate Speed into Position & Amplify
+    head->x = (head->x + (head->vel_x * DT * POS_AMPLIFIER)) * HEAD_SPRING;
+    head->y = (head->y + (head->vel_y * DT * POS_AMPLIFIER)) * HEAD_SPRING;
+    head->z = (head->z + (head->vel_z * DT * POS_AMPLIFIER)) * HEAD_SPRING;
 }

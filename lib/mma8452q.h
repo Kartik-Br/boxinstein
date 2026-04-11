@@ -9,7 +9,7 @@
 #define MMA_ADDR_VCC 0x1D
 
 // --- Physics Constants ---
-#define DT 0.016f
+/*#define DT 0.016f
 #define HAND_DAMPING 0.85f
 #define HAND_SPRING 0.15f
 #define HEAD_SENSITIVITY 30.0f
@@ -24,6 +24,33 @@ typedef struct {
 
 typedef struct {
     float x, z;
+} HeadState;*/
+
+// --- Physics Constants ---
+#define DT 0.016f
+
+// Leaky integrator constants (0.0 to 1.0)
+// Closer to 1.0 means it remembers movement longer. Closer to 0 means it snaps back to 0 fast.
+#define HAND_DAMPING 0.90f // Slowly bleeds off speed
+#define HAND_SPRING  0.95f // Slowly bleeds off position (brings hand back to center)
+#define HEAD_DAMPING 0.90f
+#define HEAD_SPRING  0.95f
+
+// Amplifiers to make small arm extensions significant
+#define SPEED_AMPLIFIER 50.0f
+#define POS_AMPLIFIER   50.0f
+
+// --- STRUCT DEFINITIONS ---
+typedef struct {
+    float x, y, z;                // Position
+    float vel_x, vel_y, vel_z;    // Speed
+    float grav_x, grav_y, grav_z; // Gravity Baseline
+} HandState;
+
+typedef struct {
+    float x, y, z;                // Position
+    float vel_x, vel_y, vel_z;    // Speed
+    float grav_x, grav_y, grav_z; // Gravity Baseline
 } HeadState;
 
 // --- Function Prototypes ---

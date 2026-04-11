@@ -55,9 +55,12 @@ int main(void) {
 
         // 3. Test Plotter Output
         // Format for Arduino Serial Plotter
-        debug_log("Head_Dodge:%f, Head_Lean:%f, RHand_X:%f, RHand_Y:%f, RHand_Z:%f\r\n, LHand_X:%f, LHand_Y:%f, LHand_Z:%f", 
-                head.z, head.x, rightHand.x, rightHand.y, rightHand.z, leftHand.x, leftHand.y, leftHand.z);
-
+        //debug_log("Head_Dodge:%f, Head_Lean:%f, RHand_X:%f, RHand_Y:%f, RHand_Z:%f\r\n, LHand_X:%f, LHand_Y:%f, LHand_Z:%f", 
+          //      head.z, head.x, rightHand.x, rightHand.y, rightHand.z, leftHand.x, leftHand.y, leftHand.z);
+        // Example Plotter Output: Tracking Speed and Position on the X-Axis
+        debug_log("Head_Spd_X:%f, Head_Pos_X:%f, RHand_Spd_X:%f, RHand_Pos_X:%f, LHand_Spd_X:%f, LHand_Pos_X:%f\r\n", 
+                head.vel_x, head.x, rightHand.vel_x, rightHand.x, leftHand.vel_x, leftHand.x);
+                
         HAL_Delay(30); // ~60 FPS
     }
 }
