@@ -1,52 +1,56 @@
-#include "mma8452q.h"
 #include "board.h"
 #include "debug_log.h"
+#include "mma8452q.h"
 #include "processor_hal.h"
 #include <stdint.h>
 
 void hardware_init(void);
 
+#include <math.h>
+#include <stdint.h>
+#include "mma8452q.h"
+#include "board.h"
+#include "debug_log.h"
+#include <stdio.h>
+
+// Global State Objects
+HandState leftHand = {0};
+HandState rightHand = {0};
+HeadState head = {0};
+float raw_data[3];
+
 int main(void) {
+    HAL_Init(); 
+    hardware_init();
+    // Initialize hardware (UART/I2C)
+    
+    // Wake up sensors
+// 2. Initialize the 3 sensors (Wake them up)
+    // Hands are on I2C Bus 1
+    mma8452q_init(I2C1, MMA_ADDR_GND); // Left Hand (SA0 to GND)
+    mma8452q_init(I2C1, MMA_ADDR_VCC); // Right Hand (SA0 to 3.3V)
+    
+    // Head is on I2C Bus 2
+    mma8452q_init(I2C2, MMA_ADDR_GND); // Head sensor (SA0 to GND)
 
-    uint8_t read_reg_val;
-
-    HAL_Init();      // Initialise Board
-    hardware_init(); // Initialise hardware peripherals
-
-    s4_mma8452q_reg_write(MMA8452Q_CTRL_REG1, 0x01); // waking it up
-    HAL_Delay(50);                                  // small delay
-
-    // Cyclic Executive (CE) loop
     while (1) {
+        mma8452q_get_accel(I2C2, MMA_ADDR_VCC, raw_data);
+        update_head_logic(&head, raw_data);
 
+        // --- 4. PROCESS LEFT HAND (I2C1) ---
+        mma8452q_get_accel(I2C1, MMA_ADDR_GND, raw_data);
+        update_hand_logic(&leftHand, raw_data);
 
-        // Task 1
-        uint8_t task1_val = s4_mma8452q_reg_read(0x0D);
-        if (task1_val == 0x2A){
-            BRD_LEDGreenToggle();
-        }
+        // --- 5. PROCESS RIGHT HAND (I2C1) ---
+        mma8452q_get_accel(I2C1, MMA_ADDR_VCC, raw_data);
+        update_hand_logic(&rightHand, raw_data);
 
-        // Task 3
-        s4_mma8452q_reg_write(MMA8452Q_CTRL_REG1, 0x01);
+        // 3. Test Plotter Output
+        // Format for Arduino Serial Plotter
+        printf("Head_Dodge:%f, Head_Lean:%f, RHand_X:%f, RHand_Y:%f, RHand_Z:%f\r\n", LHand_X:%f, LHand_Y:%f, LHand_Z:%f 
+                head.z, head.x, rightHand.x, rightHand.y, rightHand.z, leftHand.x, leftHand.y, leftHand.z);
 
-        read_reg_val = s4_mma8452q_reg_read(MMA8452Q_CTRL_REG1);
-
-        debug_log("Register Read: 0x%02X\n\r", read_reg_val);
-        // Check WHO_AM_I Register value is 0x2A
-        if (read_reg_val == 0x01) {
-            BRD_LEDRedToggle();
-        }
-
-        //Task 4
-        uint8_t xHigh = s4_mma8452q_reg_read(MMA8452Q_ACCEL_XOUT_H);
-        uint8_t xLow = s4_mma8452q_reg_read(MMA8452Q_ACCEL_XOUT_L);
-
-        // signed because MPU6050 data is twos comp
-        uint16_t xComb = (uint16_t)((xHigh << 8) | xLow);
-
-        debug_log("MMA8452Q X-AXIS: 0x%02X\n\r", xComb);
-        
-        HAL_Delay(1000); // Delay for 1s (1000ms)
+        HAL_Delay(16); // ~60 FPS
     }
 }
 
@@ -136,4 +140,3 @@ void hardware_init(void) {
     // Enable the selected I2C peripheral
     SET_BIT(I2C_DEV->CR1, I2C_CR1_PE);
 }
-
