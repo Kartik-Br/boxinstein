@@ -1,0 +1,33 @@
+# Add additional project sources like this (ONLY for local files NOT mylib files:
+# SRCS += X.c 
+#
+# all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
+
+#Name of project
+PROJ_NAME=main
+
+#Your local source files
+SRCS = $(PROJ_NAME).c
+CFLAGS += -DENABLE_DEBUG_UART #enable Debug Com Port
+###################################################
+ROOT=$(shell pwd)
+
+OBJS=$(SRCS:.c=.o)
+
+###################################################
+
+.PHONY: lib proj all depend
+all: proj
+
+#include nucelo-xxx makefile - NOTE MUST BE LAST TO INCLUDE
+include filelist.mk
+include $(SOURCELIB_ROOT)/../audio_testing/filelist.mk			#replace with your stages folder path (e.g. repo/s1)
+include $(SOURCELIB_ROOT)/components/mk/m_launch.mk
+include $(SOURCELIB_ROOT)/components/mk/m_common.mk
+
+lib:
+	$(MAKE) -C lib
+
+proj: 	$(PROJ_NAME).elf
+
+include .depend
