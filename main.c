@@ -80,10 +80,26 @@ int main(void) {
     sprites[3].isExist = true;
     sprites[3].size = 50;
 
+    pSprite opSprite;
+    opSprite.xPos = 5*64;
+    opSprite.yPos = 10*64;
+    opSprite.x_body = 0;
+    opSprite.y_body = 0;
+    opSprite.x_head = 0;
+    opSprite.y_head = 0;
+    opSprite.x_neck = 0;
+    opSprite.y_neck = 0;
+    opSprite.dLeft = false;
+    opSprite.dRight = false;
+    opSprite.dDuck = false;
+
+
     int rows = 320;
     int cols = 240;
-
+    uint32_t timePassed = HAL_GetTick();
     while(1) {
+        while (HAL_GetTick() - timePassed < 30);
+        timePassed = HAL_GetTick();
         float FOV = 70.0f; // degrees
         float FOV_RAD = FOV * (M_PI / 180.0f);
         player.angle += 5;
@@ -92,8 +108,8 @@ int main(void) {
 	    sprites[i].distanceToPlayer = dist(player.x, player.y, sprites[i].x, sprites[i].y, 0);
         }
         //draw_all_stuff(map, &player, cols, rows, &sprites, numSprites);
-        draw_all_stuff(map, &player, cols, rows, sprites, numSprites);
-        HAL_Delay(FRAME_DELAY_MS);
+        draw_all_stuff(map, &player, cols, rows, sprites, numSprites, &opSprite);
+        //HAL_Delay(FRAME_DELAY_MS);
     }
 }
 

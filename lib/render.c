@@ -199,12 +199,25 @@ void render_move_rect(int16_t ox, int16_t oy, int16_t nx, int16_t ny,
                                                                                   render_draw_rect_outline((int16_t)ps->x_head, (int16_t)ps->y_head, PS_HEAD_W, PS_HEAD_H, color);
                                                                               }
 
-                                                                              void render_erase_psprite(const pSprite *ps, uint16_t bg) {
-                                                                                  if (!ps) return;
-                                                                                  erase_rect((int16_t)ps->x_head - 1, (int16_t)ps->y_head - 1, PS_HEAD_W + 2, PS_HEAD_H + 2, bg);
-                                                                                  erase_rect((int16_t)ps->x_neck - 1, (int16_t)ps->y_neck - 1, PS_NECK_W + 2, PS_NECK_H + 2, bg);
-                                                                                  erase_rect((int16_t)ps->x_body - 1, (int16_t)ps->y_body - 1, PS_BODY_W + 2, PS_BODY_H + 2, bg);
-                                                                              }
+                                                                              //void render_erase_psprite(const pSprite *ps, uint16_t bg) {
+                                                                              //    if (!ps) return;
+                                                                              //    erase_rect((int16_t)ps->x_head - 1, (int16_t)ps->y_head - 1, PS_HEAD_W + 2, PS_HEAD_H + 2, bg);
+                                                                              //    erase_rect((int16_t)ps->x_neck - 1, (int16_t)ps->y_neck - 1, PS_NECK_W + 2, PS_NECK_H + 2, bg);
+                                                                              //    erase_rect((int16_t)ps->x_body - 1, (int16_t)ps->y_body - 1, PS_BODY_W + 2, PS_BODY_H + 2, bg);
+                                                                              //}
+
+void render_erase_psprite(const pSprite *ps, uint16_t bg) {
+    if (!ps || ps->lastSize <= 0) return;
+
+    // Erase Head area
+    erase_rect(ps->x_head, ps->y_head, ps->lastSize/2, ps->lastSize/2, bg);
+    
+    // Erase Neck area
+    erase_rect(ps->x_neck, ps->y_neck, ps->lastSize/4, ps->lastSize/4, bg);
+    
+    // Erase Body area (to bottom of screen)
+    erase_rect(ps->x_body, ps->y_body, ps->lastSize, 320 - ps->y_body, bg);
+}
 
                                                                               void render_draw_hand(const HandSprite *h, uint16_t color) {
                                                                                   if (!h || !h->isExist || h->size <= 0) return;

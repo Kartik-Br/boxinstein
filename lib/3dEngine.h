@@ -12,6 +12,6 @@
 
 float dist(float ax, float ay, float bx, float by, float ang);
 
-float draw_all_stuff(uint8_t (*map)[20], Player_info* player, int cols, int rows, HandSprite* sprites, int numSprites);
+float draw_all_stuff(uint8_t (*map)[20], Player_info* player, int cols, int rows, HandSprite* sprites, int numSprites, pSprite* opSprite);
 
 #endif

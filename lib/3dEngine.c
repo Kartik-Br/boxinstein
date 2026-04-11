@@ -156,95 +156,244 @@ float cast_ray(uint8_t (*map)[20], Player_info* player, float angle, int col, in
     return disT;
 }
 
-//V4
-float draw_all_stuff(uint8_t (*map)[20], Player_info* player, int cols, int rows, HandSprite* sprites, int numSprites)
+//V6
+float draw_all_stuff(uint8_t (*map)[20], Player_info* player, int cols, int rows, HandSprite* sprites, int numSprites, pSprite* opSprite)
 {
     float playerRad = player->angle * (M_PI / 180.0f);
     float halfFovRad = (35.0f) * (M_PI / 180.0f); 
     float tanHalfFov = tanf(halfFovRad);
 
-    // 1. BUILD Z-BUFFER (Walls)
-    float zBuffer[cols];
-    for (int col = 0; col < cols; col++) {
-        float rayAngle = (player->angle - 35.0f) + ((float)col / (float)cols) * 70.0f;
-        zBuffer[col] = cast_ray(map, player, rayAngle, col, rows);
-        if (zBuffer[col] <= 0.0f) zBuffer[col] = 1e9f;
-    }
-
-    // 2. PHASE 1: ERASE ALL OLD POSITIONS
-    // We do this BEFORE any new drawing to prevent "clobbering" closer sprites
+    // --- STEP 1: ERASE OLD POSITIONS ---
+    // Only erase if they were drawn in the previous frame
+    render_erase_psprite(opSprite, COL_BG); 
     for (int i = 0; i < numSprites; i++) {
-        if (sprites[i].isExist) {
-            render_erase_hand(&sprites[i], COL_BG);
-        }
+        if (sprites[i].isExist) render_erase_hand(&sprites[i], COL_BG);
     }
 
-    // 3. PHASE 2: CALCULATE DISTANCES & SORT (Furthest First)
-    for (int i = 0; i < numSprites; i++) {
-        if (!sprites[i].isExist) {
-            sprites[i].distanceToPlayer = -1.0f;
-            continue;
+    // --- STEP 2: CALCULATE PERSON (opSprite) ---
+    float dxP = (float)opSprite->xPos - (float)player->x;
+    float dyP = (float)opSprite->yPos - (float)player->y;
+    float spriteAngleRadP = atan2f(dyP, dxP);
+    float angleDiffRadP = spriteAngleRadP - playerRad;
+    while (angleDiffRadP >  M_PI) angleDiffRadP -= 2.0f * M_PI;
+    while (angleDiffRadP < -M_PI) angleDiffRadP += 2.0f * M_PI;
+
+    // Is it in the 70-degree FOV?
+    if (fabsf(angleDiffRadP) < halfFovRad) {
+        float pDist = dxP * cosf(playerRad) + dyP * sinf(playerRad);
+        if (pDist > 10.0f) { // Distance check to avoid huge sprites
+            float screenXOffsetP = tanf(angleDiffRadP) / tanHalfFov;
+            int targetXP = (int)((1.0f + screenXOffsetP) * 0.5f * (float)cols);
+            int baseSize = (int)((64.0f * (float)rows) / pDist);
+
+            // Update NEW positions
+            opSprite->x_head = targetXP - (baseSize / 4);
+            opSprite->y_head = (rows / 2) - (baseSize / 2);
+            opSprite->x_neck = targetXP - (baseSize / 8);
+            opSprite->y_neck = opSprite->y_head + (baseSize / 2);
+            opSprite->x_body = targetXP - (baseSize / 2);
+            opSprite->y_body = opSprite->y_neck + (baseSize / 4);
+            
+            // Save size for next frame's erasure
+            opSprite->lastSize = baseSize; 
+
+            // Draw Person FIRST
+            render_draw_rect_outline(opSprite->x_head, opSprite->y_head, baseSize/2, baseSize/2, ILI9341_WHITE);
+            render_draw_rect_outline(opSprite->x_neck, opSprite->y_neck, baseSize/4, baseSize/4, ILI9341_RED);
+            render_draw_rect_outline(opSprite->x_body, opSprite->y_body, baseSize, rows - opSprite->y_body, ILI9341_BLUE);
+        } else {
+            opSprite->lastSize = 0; // Too close, don't draw/erase
         }
-        float dx = (float)sprites[i].x - (float)player->x;
-        float dy = (float)sprites[i].y - (float)player->y;
-        
-        // Using Perpendicular distance for sorting to match projection
-        sprites[i].distanceToPlayer = dx * cosf(playerRad) + dy * sinf(playerRad);
+    } else {
+        opSprite->lastSize = 0; // Off-screen, don't draw/erase
     }
 
-    // Simple Bubble Sort (Furthest distance at index 0)
-    for (int i = 0; i < numSprites - 1; i++) {
-        for (int j = 0; j < numSprites - i - 1; j++) {
-            if (sprites[j].distanceToPlayer < sprites[j + 1].distanceToPlayer) {
-                HandSprite temp = sprites[j];
-                sprites[j] = sprites[j + 1];
-                sprites[j + 1] = temp;
-            }
-        }
-    }
-
-    // 4. PHASE 3: PROJECT AND DRAW (Back-to-Front)
+    // --- STEP 3: DRAW HANDS SECOND (Always on top) ---
     for (int i = 0; i < numSprites; i++) {
         HandSprite* s = &sprites[i];
-        if (!s->isExist || s->distanceToPlayer < 1.0f) continue;
+        if (!s->isExist) continue;
 
         float dx = (float)s->x - (float)player->x;
         float dy = (float)s->y - (float)player->y;
+        float sDist = dx * cosf(playerRad) + dy * sinf(playerRad);
+        
+        float sAngle = atan2f(dy, dx) - playerRad;
+        while (sAngle >  M_PI) sAngle -= 2.0f * M_PI;
+        while (sAngle < -M_PI) sAngle += 2.0f * M_PI;
 
-        // Relative Angle
-        float spriteAngleRad = atan2f(dy, dx);
-        float angleDiffRad = spriteAngleRad - playerRad;
-        while (angleDiffRad >  M_PI) angleDiffRad -= 2.0f * M_PI;
-        while (angleDiffRad < -M_PI) angleDiffRad += 2.0f * M_PI;
-
-        // Tangent Projection (X)
-        float screenXOffset = tanf(angleDiffRad) / tanHalfFov;
-        int targetX = (int)((1.0f + screenXOffset) * 0.5f * (float)cols);
-
-        // Cosine Correction (Size)
-        float cosDiff = cosf(angleDiffRad);
-        int targetSize = (int)((64.0f * (float)rows) / s->distanceToPlayer * cosDiff);
-
-        // Occlusion Check (Wall test)
-        // If the center is hidden by a wall, don't draw
-        if (targetX >= 0 && targetX < cols) {
-            if (s->distanceToPlayer > zBuffer[targetX]) continue;
-        }
-
-        // UPDATE Struct with NEW data
-        s->xScr = targetX;
-        s->yScr = rows / 2 + s->z;
-        s->size = targetSize;
-
-        render_draw_hand(s, ILI9341_YELLOW);
-
-        // DRAW NEW POSITION
-        // Because we sorted furthest-to-closest, closer sprites will 
-        // naturally draw over the top of further ones.
-        if (targetX > -targetSize && targetX < cols + targetSize) {
+        if (cosf(sAngle) > 0 && sDist > 10.0f) {
+            s->xScr = (int)((1.0f + (tanf(sAngle)/tanHalfFov)) * 0.5f * (float)cols);
+            s->yScr = rows / 2 + s->z;
+            s->size = (int)((64.0f * (float)rows) / sDist);
             render_draw_hand(s, ILI9341_YELLOW);
         }
     }
-
     return 0.0f;
 }
+
+//V5
+//float draw_all_stuff(uint8_t (*map)[20], Player_info* player, int cols, int rows, HandSprite* sprites, int numSprites, pSprite* opSprite)
+//{
+//    float playerRad = player->angle * (M_PI / 180.0f);
+//    float halfFovRad = (35.0f) * (M_PI / 180.0f); 
+//    float tanHalfFov = tanf(halfFovRad);
+//
+//    // --- STEP 1: ERASE OLD POSITIONS ---
+//    // At this point, opSprite and sprites[i] still hold the coordinates 
+//    // from the LAST frame. We erase them now.
+//    render_erase_psprite(opSprite, COL_BG);
+//    for (int i = 0; i < numSprites; i++) {
+//        if (sprites[i].isExist) {
+//            render_erase_hand(&sprites[i], COL_BG);
+//        }
+//    }
+//
+//    // --- STEP 2: CALCULATE NEW POSITION FOR THE PERSON (opSprite) ---
+//    float dxP = (float)opSprite->xPos - (float)player->x;
+//    float dyP = (float)opSprite->yPos - (float)player->y;
+//    float spriteAngleRadP = atan2f(dyP, dxP);
+//    float angleDiffRadP = spriteAngleRadP - playerRad;
+//    while (angleDiffRadP >  M_PI) angleDiffRadP -= 2.0f * M_PI;
+//    while (angleDiffRadP < -M_PI) angleDiffRadP += 2.0f * M_PI;
+//
+//    if (cosf(angleDiffRadP) > 0) {
+//        float pDist = dxP * cosf(playerRad) + dyP * sinf(playerRad);
+//        if (pDist < 1.0f) pDist = 1.0f; 
+//
+//        float screenXOffsetP = tanf(angleDiffRadP) / tanHalfFov;
+//        int targetXP = (int)((1.0f + screenXOffsetP) * 0.5f * (float)cols);
+//        int baseSize = (int)((64.0f * (float)rows) / pDist);
+//
+//        // NOW update the struct with NEW data
+//        opSprite->x_head = targetXP - (baseSize / 4);
+//        opSprite->y_head = (rows / 2) - (baseSize / 2);
+//        opSprite->x_neck = targetXP - (baseSize / 8);
+//        opSprite->y_neck = opSprite->y_head + (baseSize / 2);
+//        opSprite->x_body = targetXP - (baseSize / 2);
+//        opSprite->y_body = opSprite->y_neck + (baseSize / 4);
+//        // Store the size so the NEXT frame's erase function knows how big it was
+//        opSprite->lastSize = baseSize; 
+//
+//        // Draw the Person (Layer 0)
+//        render_draw_rect_outline(opSprite->x_head, opSprite->y_head, baseSize/2, baseSize/2, ILI9341_WHITE);
+//        render_draw_rect_outline(opSprite->x_neck, opSprite->y_neck, baseSize/4, baseSize/4, ILI9341_RED);
+//        render_draw_rect_outline(opSprite->x_body, opSprite->y_body, baseSize, rows - opSprite->y_body, ILI9341_BLUE);
+//    }
+//
+//    // --- STEP 3: CALCULATE & DRAW HANDS (Layer 1 - Always on top) ---
+//    for (int i = 0; i < numSprites; i++) {
+//        HandSprite* s = &sprites[i];
+//        if (!s->isExist) continue;
+//
+//        float dx = (float)s->x - (float)player->x;
+//        float dy = (float)s->y - (float)player->y;
+//        float sDist = dx * cosf(playerRad) + dy * sinf(playerRad);
+//        
+//        float sAngle = atan2f(dy, dx) - playerRad;
+//        while (sAngle >  M_PI) sAngle -= 2.0f * M_PI;
+//        while (sAngle < -M_PI) sAngle += 2.0f * M_PI;
+//
+//        if (cosf(sAngle) > 0 && sDist > 1.0f) {
+//            s->xScr = (int)((1.0f + (tanf(sAngle)/tanHalfFov)) * 0.5f * (float)cols);
+//            s->yScr = rows / 2 + s->z;
+//            s->size = (int)((64.0f * (float)rows) / sDist);
+//            
+//            // Draw Hand (Draws over the person if coordinates overlap)
+//            render_draw_hand(s, ILI9341_YELLOW);
+//        }
+//    }
+//    return 0.0f;
+//}
+
+//V4
+//float draw_all_stuff(uint8_t (*map)[20], Player_info* player, int cols, int rows, HandSprite* sprites, int numSprites, pSprite* opSprite)
+//{
+//    float playerRad = player->angle * (M_PI / 180.0f);
+//    float halfFovRad = (35.0f) * (M_PI / 180.0f); 
+//    float tanHalfFov = tanf(halfFovRad);
+//
+//    // 1. BUILD Z-BUFFER (Walls)
+//    float zBuffer[cols];
+//    for (int col = 0; col < cols; col++) {
+//        float rayAngle = (player->angle - 35.0f) + ((float)col / (float)cols) * 70.0f;
+//        zBuffer[col] = cast_ray(map, player, rayAngle, col, rows);
+//        if (zBuffer[col] <= 0.0f) zBuffer[col] = 1e9f;
+//    }
+//
+//    // 2. PHASE 1: ERASE ALL OLD POSITIONS
+//    // We do this BEFORE any new drawing to prevent "clobbering" closer sprites
+//    for (int i = 0; i < numSprites; i++) {
+//        if (sprites[i].isExist) {
+//            render_erase_hand(&sprites[i], COL_BG);
+//        }
+//    }
+//
+//    // 3. PHASE 2: CALCULATE DISTANCES & SORT (Furthest First)
+//    for (int i = 0; i < numSprites; i++) {
+//        if (!sprites[i].isExist) {
+//            sprites[i].distanceToPlayer = -1.0f;
+//            continue;
+//        }
+//        float dx = (float)sprites[i].x - (float)player->x;
+//        float dy = (float)sprites[i].y - (float)player->y;
+//        
+//        // Using Perpendicular distance for sorting to match projection
+//        sprites[i].distanceToPlayer = dx * cosf(playerRad) + dy * sinf(playerRad);
+//    }
+//
+//    // Simple Bubble Sort (Furthest distance at index 0)
+//    for (int i = 0; i < numSprites - 1; i++) {
+//        for (int j = 0; j < numSprites - i - 1; j++) {
+//            if (sprites[j].distanceToPlayer < sprites[j + 1].distanceToPlayer) {
+//                HandSprite temp = sprites[j];
+//                sprites[j] = sprites[j + 1];
+//                sprites[j + 1] = temp;
+//            }
+//        }
+//    }
+//
+//    // 4. PHASE 3: PROJECT AND DRAW (Back-to-Front)
+//    for (int i = 0; i < numSprites; i++) {
+//        HandSprite* s = &sprites[i];
+//        if (!s->isExist || s->distanceToPlayer < 1.0f) continue;
+//
+//        float dx = (float)s->x - (float)player->x;
+//        float dy = (float)s->y - (float)player->y;
+//
+//        // Relative Angle
+//        float spriteAngleRad = atan2f(dy, dx);
+//        float angleDiffRad = spriteAngleRad - playerRad;
+//        while (angleDiffRad >  M_PI) angleDiffRad -= 2.0f * M_PI;
+//        while (angleDiffRad < -M_PI) angleDiffRad += 2.0f * M_PI;
+//
+//        // Tangent Projection (X)
+//        float screenXOffset = tanf(angleDiffRad) / tanHalfFov;
+//        int targetX = (int)((1.0f + screenXOffset) * 0.5f * (float)cols);
+//
+//        // Cosine Correction (Size)
+//        float cosDiff = cosf(angleDiffRad);
+//        int targetSize = (int)((64.0f * (float)rows) / s->distanceToPlayer * cosDiff);
+//
+//        // Occlusion Check (Wall test)
+//        // If the center is hidden by a wall, don't draw
+//        if (targetX >= 0 && targetX < cols) {
+//            if (s->distanceToPlayer > zBuffer[targetX]) continue;
+//        }
+//
+//        // UPDATE Struct with NEW data
+//        s->xScr = targetX;
+//        s->yScr = rows / 2 + s->z;
+//        s->size = targetSize;
+//
+//        render_draw_hand(s, ILI9341_YELLOW);
+//
+//        // DRAW NEW POSITION
+//        // Because we sorted furthest-to-closest, closer sprites will 
+//        // naturally draw over the top of further ones.
+//        if (targetX > -targetSize && targetX < cols + targetSize) {
+//            render_draw_hand(s, ILI9341_YELLOW);
+//        }
+//    }
+//
+//    return 0.0f;
+//}

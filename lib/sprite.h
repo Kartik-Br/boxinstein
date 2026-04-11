@@ -29,12 +29,18 @@ typedef struct {
 } HandSprite;
 
 typedef struct {
+    int xPos;
+    int yPos;
     int x_body;
     int y_body;
     int x_head;
     int y_head;
     int x_neck;
     int y_neck;
+    int lastSize;
+    bool dLeft;
+    bool dRight;
+    bool dDuck;
     /* Arms removed as requested */
 } pSprite;
 
