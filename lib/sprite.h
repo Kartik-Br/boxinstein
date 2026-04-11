@@ -18,14 +18,16 @@ typedef struct {
 
 /* Hands are separate: size represents Z-axis depth */
 typedef struct {
-    int x;
-    int y;
-    int z;
-    int xScr;
-    int yScr;
-    int size;
+    int16_t x;
+    int16_t y;
+    int16_t z;
+    int16_t xScr;
+    int16_t yScr;
+    int16_t size;
     bool isExist;
-    int distanceToPlayer;
+    int16_t distanceToPlayer;
+    int8_t blockCounter;
+
 } HandSprite;
 
 typedef struct {

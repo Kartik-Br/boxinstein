@@ -3,8 +3,9 @@
 #include "render.h"
 #include "sprite.h"
 #include "3dEngine.h"
+#include "collisions.h"
 
-#define FRAME_DELAY_MS 30
+#define FRAME_DELAY_MS 67
 
 
 static int16_t  rect_x = 40;
@@ -50,39 +51,14 @@ uint8_t map[20][20] = {
 int main(void) {
     HAL_Init();
     demo_init();
-    Player_info player = {.x = 5*64, .y = 5*64, .angle = 45, .curr_speed = 0, .max_speed = 5};
+    Player_info player = {.x = 5*64, .y = 5*64, .angle = -90, .curr_speed = 0, .max_speed = 5};
     int numSprites = 4;
     HandSprite handSprites[4];
     HandSprite* sprites = handSprites;
-    //Sprite* players;
-    //Sprite* allSprites;
-    sprites[0].x = player.x + 300;
-    sprites[0].y = player.y + 300;
-    sprites[0].z = 64;
-    sprites[0].isExist = true;
-    sprites[0].size = 50;
-
-    sprites[1].x = player.x - 300;
-    sprites[1].y = player.y - 300;
-    sprites[1].z = 32;
-    sprites[1].isExist = true;
-    sprites[1].size = 50;
-
-    sprites[2].x = player.x + 400;
-    sprites[2].y = player.y + 200;
-    sprites[2].z = -36;
-    sprites[2].isExist = true;
-    sprites[2].size = 50;
-
-    sprites[3].x = player.x + 600;
-    sprites[3].y = player.y + 500;
-    sprites[3].z = -80;
-    sprites[3].isExist = true;
-    sprites[3].size = 50;
 
     pSprite opSprite;
     opSprite.xPos = 5*64;
-    opSprite.yPos = 10*64;
+    opSprite.yPos = 2*64;
     opSprite.x_body = 0;
     opSprite.y_body = 0;
     opSprite.x_head = 0;
@@ -93,16 +69,70 @@ int main(void) {
     opSprite.dRight = false;
     opSprite.dDuck = false;
 
+    //Sprite* players;
+    //Sprite* allSprites;
+    //sprites[0].x = player.x - 70;
+    sprites[0].x = opSprite.xPos - 25;
+    //sprites[0].y = player.y - 128;
+    sprites[0].y = opSprite.yPos - 5;
+    sprites[0].z = 125;
+    sprites[0].isExist = true;
+    sprites[0].size = 50;
+    sprites[0].blockCounter = 0;
+
+    sprites[1].x = player.x - 300;
+    sprites[1].y = player.y - 300;
+    sprites[1].z = 32;
+    sprites[1].isExist = false;
+    sprites[1].size = 50;
+    sprites[1].blockCounter = 0;
+
+
+    sprites[2].x = opSprite.xPos + 100;
+    //sprites[2].x = opSprite.xPos;
+    sprites[2].y = opSprite.yPos - 128;
+    //sprites[2].y = opSprite.yPos - 1;
+    sprites[2].z = -50;
+    sprites[2].isExist = false;
+    sprites[2].size = 50;
+
+    sprites[3].x = player.x + 600;
+    sprites[3].y = player.y + 500;
+    sprites[3].z = -80;
+    sprites[3].isExist = false;
+    sprites[3].size = 50;
+
+
 
     int rows = 320;
     int cols = 240;
     uint32_t timePassed = HAL_GetTick();
     while(1) {
-        while (HAL_GetTick() - timePassed < 30);
+        while (HAL_GetTick() - timePassed < FRAME_DELAY_MS);
+        if (check_collide_block(&(sprites[0]), sprites)) {
+            break;
+        }
+        if (check_collide_block(&(sprites[1]), sprites)) {
+            break;
+        }
+        if (check_collide_head(&(sprites[0]), &opSprite)) {
+            break;
+        }
+        if (check_collide_head(&(sprites[1]), &opSprite)) {
+            break;
+        }
+        if (check_collide_body(&(sprites[0]), &opSprite)) {
+            break;
+        }
+        if (check_collide_body(&(sprites[1]), &opSprite)) {
+            break;
+        }
         timePassed = HAL_GetTick();
         float FOV = 70.0f; // degrees
         float FOV_RAD = FOV * (M_PI / 180.0f);
-        player.angle += 5;
+        //player.angle += 5;
+        //opSprite.xPos += 5;
+        //sprites[0].y -= 5;
 
         for (int i = 0; i < numSprites; i++) {
 	    sprites[i].distanceToPlayer = dist(player.x, player.y, sprites[i].x, sprites[i].y, 0);
@@ -110,7 +140,9 @@ int main(void) {
         //draw_all_stuff(map, &player, cols, rows, &sprites, numSprites);
         draw_all_stuff(map, &player, cols, rows, sprites, numSprites, &opSprite);
         //HAL_Delay(FRAME_DELAY_MS);
+        //break;
     }
+    return 0;
 }
 
 static void demo_init(void) {

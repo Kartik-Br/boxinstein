@@ -37,5 +37,6 @@ ifdef USE_ILI9488
     LIBOBJS += obj/render9488.o
 else
     LIBSRCS += $(MYLIB_PATH)/accel.c $(MYLIB_PATH)/ili9341.c \
-               $(MYLIB_PATH)/render.c $(MYLIB_PATH)/3dEngine.c
+               $(MYLIB_PATH)/render.c $(MYLIB_PATH)/3dEngine.c \
+			   $(MYLIB_PATH)/collisions.c
 endif
