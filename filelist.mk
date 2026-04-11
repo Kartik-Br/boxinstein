@@ -8,7 +8,6 @@
 # DO NOT USE absolute file paths (e.g. /home/users/myuser/mydir)
 # e.g. MYLIBPATH=$(SOURCELIB_ROOT)/../mylib
 MYLIB_PATH=./lib
-
 # Set folder path with header files to include.
 # ONLY use relative file paths that start with $(SOURCELIB_ROOT)../
 # DO NOT USE absolute file paths (e.g. /home/users/myuser/mydir)
