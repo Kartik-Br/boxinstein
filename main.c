@@ -22,16 +22,18 @@ float raw_data[3];
 int main(void) {
     HAL_Init(); 
     hardware_init();
+
+    debug_log("System Booted...\r\n");
+
+    mma8452q_init(I2C1, MMA_ADDR_GND);
+    debug_log("Left Hand Init OK\r\n");
+
+    mma8452q_init(I2C1, MMA_ADDR_VCC);
+    debug_log("Right Hand Init OK\r\n");
+    
+    mma8452q_init(I2C2, MMA_ADDR_VCC);
+    debug_log("Head Init OK\r\n");
     // Initialize hardware (UART/I2C)
-    
-    // Wake up sensors
-// 2. Initialize the 3 sensors (Wake them up)
-    // Hands are on I2C Bus 1
-    mma8452q_init(I2C1, MMA_ADDR_GND); // Left Hand (SA0 to GND)
-    mma8452q_init(I2C1, MMA_ADDR_VCC); // Right Hand (SA0 to 3.3V)
-    
-    // Head is on I2C Bus 2
-    mma8452q_init(I2C2, MMA_ADDR_GND); // Head sensor (SA0 to GND)
 
     while (1) {
         mma8452q_get_accel(I2C2, MMA_ADDR_VCC, raw_data);
@@ -47,7 +49,7 @@ int main(void) {
 
         // 3. Test Plotter Output
         // Format for Arduino Serial Plotter
-        printf("Head_Dodge:%f, Head_Lean:%f, RHand_X:%f, RHand_Y:%f, RHand_Z:%f\r\n", LHand_X:%f, LHand_Y:%f, LHand_Z:%f 
+        debug_log("Head_Dodge:%f, Head_Lean:%f, RHand_X:%f, RHand_Y:%f, RHand_Z:%f\r\n, LHand_X:%f, LHand_Y:%f, LHand_Z:%f", 
                 head.z, head.x, rightHand.x, rightHand.y, rightHand.z, leftHand.x, leftHand.y, leftHand.z);
 
         HAL_Delay(16); // ~60 FPS
@@ -55,88 +57,62 @@ int main(void) {
 }
 
 void hardware_init(void) {
-
     uint32_t pclk1;
     uint32_t freqrange;
 
-    BRD_LEDInit(); // Initialise LEDs
+    // 1. Initialise Standard Board Features
+    BRD_LEDInit(); 
     BRD_debuguart_init();
-
-    // Turn off LEDs
     BRD_LEDGreenOff();
 
-    // Enable GPIO clock
-    I2C_DEV_GPIO_CLK();
+    // 2. Enable Peripheral Clocks
+    __HAL_RCC_GPIOB_CLK_ENABLE();  // Pins for both I2C1 and I2C2 are on Port B
+    __HAL_RCC_I2C1_CLK_ENABLE();   // Clock for I2C1
+    __HAL_RCC_I2C2_CLK_ENABLE();   // Clock for I2C2
 
-    //******************************************************
-    // IMPORTANT NOTE: SCL Must be Initialised BEFORE SDA
-    //******************************************************
+    // ---------------------------------------------------------
+    // 3. GPIO CONFIGURATION (PB8, PB9 for I2C1 | PB10, PB11 for I2C2)
+    // ---------------------------------------------------------
 
-    // Clear and Set Alternate Function for pin (upper ARF register)
-    MODIFY_REG(I2C_DEV_GPIO->AFR[1],
-               ((0x0F) << ((I2C_DEV_SCL_PIN - 8) * 4)) |
-                   ((0x0F) << ((I2C_DEV_SDA_PIN - 8) * 4)),
-               ((I2C_DEV_GPIO_AF << ((I2C_DEV_SCL_PIN - 8) * 4)) |
-                (I2C_DEV_GPIO_AF << ((I2C_DEV_SDA_PIN - 8)) * 4)));
+    // Set Alternate Function AF4 for pins PB8, PB9, PB10, PB11
+    // AFR[1] handles pins 8 through 15
+    MODIFY_REG(GPIOB->AFR[1], 
+        (0xF << ((8-8)*4)) | (0xF << ((9-8)*4)) | (0xF << ((10-8)*4)) | (0xF << ((11-8)*4)),
+        (4 << ((8-8)*4))   | (4 << ((9-8)*4))   | (4 << ((10-8)*4))  | (4 << ((11-8)*4))
+    );
 
-    // Clear and Set Alternate Function Push Pull Mode
-    MODIFY_REG(
-        I2C_DEV_GPIO->MODER,
-        ((0x03 << (I2C_DEV_SCL_PIN * 2)) | (0x03 << (I2C_DEV_SDA_PIN * 2))),
-        ((GPIO_MODE_AF_OD << (I2C_DEV_SCL_PIN * 2)) |
-         (GPIO_MODE_AF_OD << (I2C_DEV_SDA_PIN * 2))));
+    // Set MODER to Alternate Function for all 4 pins
+    MODIFY_REG(GPIOB->MODER,
+        (0x3 << (8*2)) | (0x3 << (9*2)) | (0x3 << (10*2)) | (0x3 << (11*2)),
+        (0x2 << (8*2)) | (0x2 << (9*2)) | (0x2 << (10*2)) | (0x2 << (11*2))
+    );
 
-    // Set low speed.
-    SET_BIT(I2C_DEV_GPIO->OSPEEDR, (GPIO_SPEED_LOW << I2C_DEV_SCL_PIN) |
-                                       (GPIO_SPEED_LOW << I2C_DEV_SDA_PIN));
+    // Set Output Type to OPEN DRAIN (Required for I2C)
+    SET_BIT(GPIOB->OTYPER, (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11));
 
-    // Set Bit for Push/Pull output
-    SET_BIT(I2C_DEV_GPIO->OTYPER,
-            ((0x01 << I2C_DEV_SCL_PIN) | (0x01 << I2C_DEV_SDA_PIN)));
+    // Set Pull-up resistors (Internal pull-ups)
+    MODIFY_REG(GPIOB->PUPDR,
+        (0x3 << (8*2)) | (0x3 << (9*2)) | (0x3 << (10*2)) | (0x3 << (11*2)),
+        (0x1 << (8*2)) | (0x1 << (9*2)) | (0x1 << (10*2)) | (0x1 << (11*2))
+    );
 
-    // Clear and set bits for no push/pull
-    MODIFY_REG(I2C_DEV_GPIO->PUPDR,
-               (0x03 << (I2C_DEV_SCL_PIN * 2)) |
-                   (0x03 << (I2C_DEV_SDA_PIN * 2)),
-               (GPIO_PULLUP << (I2C_DEV_SCL_PIN * 2)) |
-                   (GPIO_PULLUP << (I2C_DEV_SDA_PIN * 2)));
+    // ---------------------------------------------------------
+    // 4. I2C PERIPHERAL CONFIGURATION (Common Logic)
+    // ---------------------------------------------------------
+    pclk1 = HAL_RCC_GetPCLK1Freq();
+    freqrange = I2C_FREQRANGE(pclk1);
 
-    // Configure the I2C peripheral
-    // Enable I2C peripheral clock
-    __I2C1_CLK_ENABLE();
+    // --- Configure I2C1 ---
+    CLEAR_BIT(I2C1->CR1, I2C_CR1_PE); // Disable to config
+    MODIFY_REG(I2C1->CR2, I2C_CR2_FREQ, freqrange);
+    MODIFY_REG(I2C1->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(freqrange, 100000));
+    MODIFY_REG(I2C1->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk1, 100000, I2C_DUTYCYCLE_2));
+    SET_BIT(I2C1->CR1, I2C_CR1_PE);   // Enable
 
-    // Disable the selected I2C peripheral
-    CLEAR_BIT(I2C_DEV->CR1, I2C_CR1_PE);
-
-    pclk1 = HAL_RCC_GetPCLK1Freq();   // Get PCLK1 frequency
-    freqrange = I2C_FREQRANGE(pclk1); // Calculate frequency range
-
-    // I2Cx CR2 Configuration - Configure I2Cx: Frequency range
-    MODIFY_REG(I2C_DEV->CR2, I2C_CR2_FREQ, freqrange);
-
-    // I2Cx TRISE Configuration - Configure I2Cx: Rise Time
-    MODIFY_REG(I2C_DEV->TRISE, I2C_TRISE_TRISE,
-               I2C_RISE_TIME(freqrange, I2C_DEV_CLOCKSPEED));
-
-    // I2Cx CCR Configuration - Configure I2Cx: Speed
-    MODIFY_REG(I2C_DEV->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR),
-               I2C_SPEED(pclk1, I2C_DEV_CLOCKSPEED, I2C_DUTYCYCLE_2));
-
-    // I2Cx CR1 Configuration - Configure I2Cx: Generalcall and NoStretch mode
-    MODIFY_REG(I2C_DEV->CR1, (I2C_CR1_ENGC | I2C_CR1_NOSTRETCH),
-               (I2C_GENERALCALL_DISABLE | I2C_NOSTRETCH_DISABLE));
-
-    // I2Cx OAR1 Configuration - Configure I2Cx: Own Address1 and addressing
-    // mode
-    MODIFY_REG(
-        I2C_DEV->OAR1,
-        (I2C_OAR1_ADDMODE | I2C_OAR1_ADD8_9 | I2C_OAR1_ADD1_7 | I2C_OAR1_ADD0),
-        I2C_ADDRESSINGMODE_7BIT);
-
-    // I2Cx OAR2 Configuration - Configure I2Cx: Dual mode and Own Address2
-    MODIFY_REG(I2C_DEV->OAR2, (I2C_OAR2_ENDUAL | I2C_OAR2_ADD2),
-               I2C_DUALADDRESS_DISABLE);
-
-    // Enable the selected I2C peripheral
-    SET_BIT(I2C_DEV->CR1, I2C_CR1_PE);
+    // --- Configure I2C2 ---
+    CLEAR_BIT(I2C2->CR1, I2C_CR1_PE); // Disable to config
+    MODIFY_REG(I2C2->CR2, I2C_CR2_FREQ, freqrange);
+    MODIFY_REG(I2C2->TRISE, I2C_TRISE_TRISE, I2C_RISE_TIME(freqrange, 100000));
+    MODIFY_REG(I2C2->CCR, (I2C_CCR_FS | I2C_CCR_DUTY | I2C_CCR_CCR), I2C_SPEED(pclk1, 100000, I2C_DUTYCYCLE_2));
+    SET_BIT(I2C2->CR1, I2C_CR1_PE);   // Enable
 }

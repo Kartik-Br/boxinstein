@@ -25,6 +25,7 @@
  * @param reg_address The register to read from
  */
 uint8_t mma8452q_reg_read(I2C_TypeDef* i2c, uint8_t dev_addr, uint8_t reg_address) {
+
     uint8_t reg_value = 0;
     uint32_t tickstart = HAL_GetTick();
     uint8_t addr_write = (dev_addr << 1);          // Shift for I2C Write bit (0)
@@ -71,30 +72,33 @@ uint8_t mma8452q_reg_read(I2C_TypeDef* i2c, uint8_t dev_addr, uint8_t reg_addres
  * @brief Writes a single byte to a specific register on a specific sensor
  */
 void mma8452q_reg_write(I2C_TypeDef* i2c, uint8_t dev_addr, uint8_t reg_address, uint8_t reg_value) {
-    uint32_t tickstart = HAL_GetTick();
+
+    uint32_t timeout = 100000;
     uint8_t addr_write = (dev_addr << 1);
 
     // 1. START
     SET_BIT(i2c->CR1, I2C_CR1_START);
-    while ((READ_REG(i2c->SR1) & I2C_SR1_SB) == 0);
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_SB)) if (--timeout == 0) return;
 
     // 2. Device Address
+    timeout = 100000;
     WRITE_REG(i2c->DR, addr_write);
-    while ((READ_REG(i2c->SR1) & I2C_SR1_ADDR) == 0);
-    (void)i2c->SR2; // Clear ADDR
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_ADDR)) if (--timeout == 0) return;
+    (void)i2c->SR2; 
 
     // 3. Register Address
+    timeout = 100000;
     WRITE_REG(i2c->DR, reg_address);
-    while ((READ_REG(i2c->SR1) & I2C_SR1_TXE) == 0);
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_TXE)) if (--timeout == 0) return;
 
     // 4. Send Data
     WRITE_REG(i2c->DR, reg_value);
-    while (!((READ_REG(i2c->SR1) & I2C_SR1_TXE) && (READ_REG(i2c->SR1) & I2C_SR1_BTF)));
+    while (!((READ_REG(i2c->SR1) & I2C_SR1_TXE) && (READ_REG(i2c->SR1) & I2C_SR1_BTF))) 
+        if (--timeout == 0) break;
 
     // 5. STOP
     SET_BIT(i2c->CR1, I2C_CR1_STOP);
 }
-
 /**
  * @brief Initialize the sensor into ACTIVE mode
  */
@@ -108,18 +112,55 @@ void mma8452q_init(I2C_TypeDef* i2c, uint8_t dev_addr) {
  */
 void mma8452q_get_accel(I2C_TypeDef* i2c, uint8_t dev_addr, float *accel_data) {
     uint8_t buf[6];
-    
-    // Read 6 bytes starting from 0x01 (X_MSB)
-    for(int i = 0; i < 6; i++) {
-        buf[i] = mma8452q_reg_read(i2c, dev_addr, 0x01 + i);
+    uint32_t timeout = 100000; // Basic loop counter timeout
+    uint8_t addr_write = (dev_addr << 1);
+    uint8_t addr_read  = (dev_addr << 1) | 0x01;
+
+    // --- STEP 1: Send the Register Address (0x01) ---
+    SET_BIT(i2c->CR1, I2C_CR1_START);
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_SB)) if (--timeout == 0) return;
+
+    WRITE_REG(i2c->DR, addr_write);
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_ADDR)) if (--timeout == 0) return;
+    (void)i2c->SR2; // Clear ADDR flag
+
+    WRITE_REG(i2c->DR, 0x01); // OUT_X_MSB register
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_TXE)) if (--timeout == 0) return;
+
+    // --- STEP 2: Repeated Start to Read 6 Bytes ---
+    SET_BIT(i2c->CR1, I2C_CR1_START);
+    timeout = 100000;
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_SB)) if (--timeout == 0) return;
+
+    WRITE_REG(i2c->DR, addr_read);
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_ADDR)) if (--timeout == 0) return;
+    (void)i2c->SR2; // Clear ADDR flag
+
+    // Enable Acknowledgement for burst reading
+    SET_BIT(i2c->CR1, I2C_CR1_ACK);
+
+    for (int i = 0; i < 5; i++) {
+        timeout = 100000;
+        while (!(READ_REG(i2c->SR1) & I2C_SR1_RXNE)) if (--timeout == 0) return;
+        buf[i] = READ_REG(i2c->DR);
     }
 
-    // Combine 12-bit data
+    // --- STEP 3: The Last Byte (NACK and STOP) ---
+    CLEAR_BIT(i2c->CR1, I2C_CR1_ACK); // Must NACK the last byte
+    SET_BIT(i2c->CR1, I2C_CR1_STOP);
+    
+    timeout = 100000;
+    while (!(READ_REG(i2c->SR1) & I2C_SR1_RXNE)) if (--timeout == 0) return;
+    buf[5] = READ_REG(i2c->DR);
+
+    // --- STEP 4: Data Conversion ---
+    // MMA8452Q is 12-bit left-justified. 
+    // Combine High (8 bits) and Low (4 bits from the top of the second byte)
     int16_t x = ((int16_t)(buf[0] << 8) | buf[1]) >> 4;
     int16_t y = ((int16_t)(buf[2] << 8) | buf[3]) >> 4;
     int16_t z = ((int16_t)(buf[4] << 8) | buf[5]) >> 4;
 
-    // Convert to Gs (1g = 1024 counts @ +/- 2g range)
+    // Convert to G-force (Assuming +/- 2g range where 1g = 1024 counts)
     accel_data[0] = (float)x / 1024.0f;
     accel_data[1] = (float)y / 1024.0f;
     accel_data[2] = (float)z / 1024.0f;
