@@ -46,8 +46,8 @@
 /* ------------------------------------------------------------------ */
 
 /* Moving rectangle dimensions */
-#define RECT_W   100
-#define RECT_H   100
+#define RECT_W   30
+#define RECT_H   20
 
 /* Starting position (inside the border) */
 #define RECT_START_X  40
@@ -105,6 +105,7 @@ int main(void) {
 
     /* Configure system clock to 180 MHz (typical sourcelib setup)    */
     /* Replace with your project's SystemClock_Config() if different  */
+    SystemClock_Config();
 
     demo_init();
 
@@ -187,7 +188,7 @@ static void demo_loop(void) {
         render_erase_psprite(&guy_ps, COL_BG);
 
         /* Accumulate walked distance */
-        uint16_t step = (uint16_t)(abs(sdx) + abs(sdy));
+        uint16_t step = (uint16_t)(abs16(sdx) + abs16(sdy));
         guy_dist += step;
         guy.distanceToPlayer += step;
 
