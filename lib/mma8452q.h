@@ -9,11 +9,20 @@
 #define MMA_ADDR_VCC 0x1D
 
 // --- Physics Constants ---
-/*#define DT 0.016f
-#define HAND_DAMPING 0.85f
-#define HAND_SPRING 0.15f
-#define HEAD_SENSITIVITY 30.0f
-#define HEAD_SMOOTHING 0.15f  // Lower = smoother but laggier (0.05 to 0.2 is ideal)
+#define DT 0.016f
+
+// HAND TUNING (Smooth, fluid gestures)
+#define HAND_DAMPING 0.95f     // 95% velocity retained (smooth glide)
+#define HAND_SPRING  0.03f     // 3% pull to center per frame (loose rubber band)
+#define HAND_SENSITIVITY 150.0f // MASSIVE boost to translate tiny Gs to usable coordinates
+
+// HEAD TUNING (Tight, responsive camera control)
+#define HEAD_DAMPING 0.85f     // 85% velocity retained (stops faster)
+#define HEAD_SPRING  0.08f     // 8% pull to center (snaps back to center quickly)
+#define HEAD_SENSITIVITY 200.0f // Huge boost to catch subtle neck movements
+
+// SENSOR NOISE FILTER
+#define DEADZONE 0.02f         // Lowered from 0.05. Allows slow movements to register
 
 // --- STRUCT DEFINITIONS (Crucial for fixing your error) ---
 typedef struct {
@@ -23,34 +32,9 @@ typedef struct {
 } HandState;
 
 typedef struct {
-    float x, z;
-} HeadState;*/
-
-// --- Physics Constants ---
-#define DT 0.016f
-
-// Leaky integrator constants (0.0 to 1.0)
-// Closer to 1.0 means it remembers movement longer. Closer to 0 means it snaps back to 0 fast.
-#define HAND_DAMPING 0.90f // Slowly bleeds off speed
-#define HAND_SPRING  0.95f // Slowly bleeds off position (brings hand back to center)
-#define HEAD_DAMPING 0.90f
-#define HEAD_SPRING  0.95f
-
-// Amplifiers to make small arm extensions significant
-#define SPEED_AMPLIFIER 50.0f
-#define POS_AMPLIFIER   50.0f
-
-// --- STRUCT DEFINITIONS ---
-typedef struct {
-    float x, y, z;                // Position
-    float vel_x, vel_y, vel_z;    // Speed
-    float grav_x, grav_y, grav_z; // Gravity Baseline
-} HandState;
-
-typedef struct {
-    float x, y, z;                // Position
-    float vel_x, vel_y, vel_z;    // Speed
-    float grav_x, grav_y, grav_z; // Gravity Baseline
+    float x, z;             // Current rotation/position
+    float vel_x, vel_z;     // Velocity
+    float last_ax, last_az; // For calculating delta (mx, mz)
 } HeadState;
 
 // --- Function Prototypes ---
