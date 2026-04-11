@@ -3,7 +3,7 @@
  #include "processor_hal.h"
 
 // ─── CHANGE THESE TO SET YOUR TONE ───────────────────────────────
-#define AUDIO_FREQUENCY_HZ     440       // Tone frequency in Hz (440 = A4, 262 = C4, 523 = C5)
+#define AUDIO_FREQUENCY_HZ     200      // Tone frequency in Hz (440 = A4, 262 = C4, 523 = C5)
 #define AUDIO_DUTY_CYCLE_PCT   50        // Duty cycle % (50 is standard for buzzers)
 // ─────────────────────────────────────────────────────────────────
 
@@ -74,4 +74,12 @@ void audio_on(void) {
 void audio_off(void) {
     TIM1->BDTR &= ~TIM_BDTR_MOE;  // Disable main output (pin goes idle)
     TIM1->CR1  &= ~TIM_CR1_CEN;   // Stop counter
+}
+
+void audio_set_frequency(int freq_hz) {
+    uint32_t ticks = (TIMER_COUNTER_FREQ / freq_hz) - 1;
+    
+    TIM1->ARR  = ticks;                          // Set new period
+    TIM1->CCR1 = ticks / 2;                      // 50% duty cycle
+    TIM1->EGR  |= TIM_EGR_UG;                    // Force update to apply immediately
 }

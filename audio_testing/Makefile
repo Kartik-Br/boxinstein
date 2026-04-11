@@ -9,6 +9,7 @@ PROJ_NAME=main
 #Your local source files
 SRCS = $(PROJ_NAME).c
 CFLAGS += -DENABLE_DEBUG_UART #enable Debug Com Port
+CFLAGS += -DMYCONFIG
 ###################################################
 ROOT=$(shell pwd)
 
@@ -16,12 +17,14 @@ OBJS=$(SRCS:.c=.o)
 
 ###################################################
 
-.PHONY: lib proj all depend
+.PHONY: $(shell mkdir -p obj) lib proj all depend
 all: proj
 
-#include nucelo-xxx makefile - NOTE MUST BE LAST TO INCLUDE
-include filelist.mk
-include $(SOURCELIB_ROOT)/../audio_testing/filelist.mk			#replace with your stages folder path (e.g. repo/s1)
+include $(SOURCELIB_ROOT)/components/peripherals/nrf24l01plus/nucleo-f429/filelist.mk
+
+#include nucelo-f429zi makefile - NOTE MUST BE LAST TO INCLUDE
+include $(SOURCELIB_ROOT)/../audio_testing/filelist.mk			
+include $(SOURCELIB_ROOT)/components/boards/nucleo-f429zi/board.mk
 include $(SOURCELIB_ROOT)/components/mk/m_launch.mk
 include $(SOURCELIB_ROOT)/components/mk/m_common.mk
 
