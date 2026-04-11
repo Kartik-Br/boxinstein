@@ -5,10 +5,10 @@
 #include "config.h"
 
 #define COL_BG      ILI9341_BLACK
-#define COL_BORDER  ILI9341_WHITE
+#define COL_BORDER  ILI9341_BLACK
 #define COL_RECT    ILI9341_YELLOW
 #define COL_SPRITE  ILI9341_CYAN
-#define COL_LINE    ILI9341_MAGENTA
+#define COL_LINE    ILI9341_WHITE
 
 float dist(float ax, float ay, float bx, float by, float ang);
 

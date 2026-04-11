@@ -233,8 +233,10 @@ float draw_all_stuff(uint8_t (*map)[20], Player_info* player, int cols, int rows
 
         // UPDATE Struct with NEW data
         s->xScr = targetX;
-        s->yScr = rows / 2;
+        s->yScr = rows / 2 + s->z;
         s->size = targetSize;
+
+        render_draw_hand(s, ILI9341_YELLOW);
 
         // DRAW NEW POSITION
         // Because we sorted furthest-to-closest, closer sprites will 
